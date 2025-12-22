@@ -20,7 +20,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.exceptions import RequestValidationError
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from pydantic_settings import BaseSettings
 
 # OpenTelemetry imports
@@ -54,6 +54,8 @@ logger = logging.getLogger(__name__)
 class Settings(BaseSettings):
     """Application settings with environment variable support."""
     
+    model_config = ConfigDict(env_file=".env")
+    
     app_name: str = "fastapi-starter"
     app_version: str = "1.0.0"
     environment: str = "development"
@@ -65,9 +67,6 @@ class Settings(BaseSettings):
     otel_enabled: bool = True
     otel_exporter_endpoint: str = "http://localhost:4317"
     otel_service_name: str = "fastapi-app"
-    
-    class Config:
-        env_file = ".env"
 
 
 settings = Settings()
