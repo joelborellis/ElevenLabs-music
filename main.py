@@ -10,6 +10,20 @@ This application includes:
 - Streaming response support
 """
 
+# Load environment variables FIRST before any other imports
+from dotenv import load_dotenv
+import os
+
+# Load .env file
+load_dotenv()
+
+# Validate critical environment variables
+if not os.getenv("OPENAI_API_KEY"):
+    raise RuntimeError(
+        "OPENAI_API_KEY environment variable is not set. "
+        "Please add it to your .env file or set it in your environment."
+    )
+
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Optional
 import logging
@@ -34,6 +48,9 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 
+# Application routers
+from routers import prompt_router
+
 
 # ============================================================================
 # LOGGING CONFIGURATION
@@ -54,7 +71,11 @@ logger = logging.getLogger(__name__)
 class Settings(BaseSettings):
     """Application settings with environment variable support."""
     
-    model_config = ConfigDict(env_file=".env")
+    model_config = ConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"  # Ignore extra fields in .env that aren't defined here
+    )
     
     app_name: str = "fastapi-starter"
     app_version: str = "1.0.0"
@@ -195,6 +216,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # ===== STARTUP =====
     logger.info(f"Starting {settings.app_name} v{settings.app_version} ({settings.environment})")
     
+    # Verify OpenAI API key is available
+    api_key = os.getenv("OPENAI_API_KEY")
+    if api_key:
+        logger.info(f"OpenAI API key loaded (length: {len(api_key)} chars)")
+    else:
+        logger.error("OpenAI API key NOT loaded - prompt generation will fail!")
+    
     # Initialize OpenTelemetry
     setup_telemetry()
     
@@ -269,6 +297,14 @@ async def add_request_id(request: Request, call_next):
 # Instrument FastAPI with OpenTelemetry
 if settings.otel_enabled:
     FastAPIInstrumentor.instrument_app(app)
+
+
+# ============================================================================
+# INCLUDE ROUTERS
+# ============================================================================
+
+# Include the prompt generation router
+app.include_router(prompt_router)
 
 
 # ============================================================================
@@ -361,6 +397,7 @@ async def root(request: Request) -> dict:
             "health": "/health",
             "readiness": "/ready",
             "liveness": "/alive",
+            "prompt": "/prompt",
             "docs": "/docs",
             "openapi": "/openapi.json"
         },
