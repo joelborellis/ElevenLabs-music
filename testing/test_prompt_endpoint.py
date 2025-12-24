@@ -11,36 +11,34 @@ from pprint import pprint
 
 async def test_prompt_generation():
     """Test the prompt generation endpoint with a sample request."""
-    
+
     base_url = "http://localhost:8000"
-    
+
     # Example request payload
     payload = {
         "project_blueprint": "ad_brand_fast_hook",
         "sound_profile": "bright_pop_electro",
         "delivery_and_control": "balanced_studio",
-        "instrumental_only": False
+        "instrumental_only": False,
+        "user_narrative": None,
     }
-    
+
     print("=" * 80)
     print("Testing /prompt endpoint")
     print("=" * 80)
     print("\nRequest payload:")
     pprint(payload)
     print("\n" + "=" * 80)
-    
+
     async with httpx.AsyncClient(timeout=60.0) as client:
         try:
             # Make the request
             print("\nSending POST request to /prompt...")
-            response = await client.post(
-                f"{base_url}/prompt",
-                json=payload
-            )
-            
+            response = await client.post(f"{base_url}/prompt", json=payload)
+
             # Check response status
             print(f"Status code: {response.status_code}")
-            
+
             if response.status_code == 200:
                 result = response.json()
                 print("\n" + "=" * 80)
@@ -50,12 +48,12 @@ async def test_prompt_generation():
                 print(f"Timestamp: {result['timestamp']}")
                 print(f"\nPrompt ({len(result['prompt'])} characters):")
                 print("-" * 80)
-                print(result['prompt'])
+                print(result["prompt"])
                 print("-" * 80)
             else:
                 print(f"\n✗ Error: {response.status_code}")
                 print(response.text)
-                
+
         except httpx.ConnectError:
             print("\n✗ Error: Could not connect to server.")
             print("Make sure the server is running with: uv run python main.py")
@@ -65,9 +63,9 @@ async def test_prompt_generation():
 
 async def test_all_combinations():
     """Test multiple combinations of presets."""
-    
+
     base_url = "http://localhost:8000"
-    
+
     test_cases = [
         {
             "name": "Meditation/Wellness Track",
@@ -75,8 +73,9 @@ async def test_all_combinations():
                 "project_blueprint": "meditation_sleep",
                 "sound_profile": "lofi_cozy",
                 "delivery_and_control": "exploratory_iterate",
-                "instrumental_only": True
-            }
+                "instrumental_only": True,
+                "user_narrative": "A peaceful morning routine, sipping tea while watching the sunrise.",
+            },
         },
         {
             "name": "Video Game Action Music",
@@ -84,8 +83,9 @@ async def test_all_combinations():
                 "project_blueprint": "video_game_action_loop",
                 "sound_profile": "epic_cinematic",
                 "delivery_and_control": "balanced_studio",
-                "instrumental_only": True
-            }
+                "instrumental_only": True,
+                "user_narrative": "A climactic battle scene in a space opera, starships clashing among the stars.",
+            },
         },
         {
             "name": "Podcast Background",
@@ -93,33 +93,56 @@ async def test_all_combinations():
                 "project_blueprint": "podcast_voiceover_loop",
                 "sound_profile": "lofi_cozy",
                 "delivery_and_control": "balanced_studio",
-                "instrumental_only": True
-            }
+                "instrumental_only": True,
+                "user_narrative": None,
+            },
+        },
+        {
+            "name": "Personal Love Song with Narrative",
+            "payload": {
+                "project_blueprint": "standalone_song_mini",
+                "sound_profile": "indie_live_band",
+                "delivery_and_control": "balanced_studio",
+                "instrumental_only": False,
+                "user_narrative": "A love song for my partner Alex. We met at a book club discussing our favorite novels. They love autumn leaves and cozy sweaters. This is for our anniversary.",
+            },
+        },
+        {
+            "name": "Ad brand fast hook",
+            "payload": {
+                "project_blueprint": "ad_brand_fast_hook",
+                "sound_profile": "bright_pop_electro",
+                "delivery_and_control": "balanced_studio",
+                "instrumental_only": False,
+                "user_narrative": None,
+            },
         }
     ]
-    
+
     async with httpx.AsyncClient(timeout=60.0) as client:
         for i, test_case in enumerate(test_cases, 1):
             print("\n" + "=" * 80)
             print(f"Test {i}/{len(test_cases)}: {test_case['name']}")
             print("=" * 80)
-            
+
             try:
                 response = await client.post(
-                    f"{base_url}/prompt",
-                    json=test_case['payload']
+                    f"{base_url}/prompt", json=test_case["payload"]
                 )
-                
+
                 if response.status_code == 200:
                     result = response.json()
                     print(f"✓ Success! Generated {len(result['prompt'])} characters")
                     print(f"  Request ID: {result['request_id']}")
+                    print("-" * 80)
+                    print(result["prompt"])
+                    print("-" * 80)
                 else:
                     print(f"✗ Error: {response.status_code}")
-                    
+
             except Exception as e:
                 print(f"✗ Error: {e}")
-            
+
             # Small delay between requests
             await asyncio.sleep(1)
 
@@ -127,7 +150,7 @@ async def test_all_combinations():
 async def main():
     """Run the tests."""
     import sys
-    
+
     if len(sys.argv) > 1 and sys.argv[1] == "--all":
         await test_all_combinations()
     else:

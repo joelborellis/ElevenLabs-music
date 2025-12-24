@@ -25,7 +25,8 @@ async def generate_simple_prompt():
         "project_blueprint": "ad_brand_fast_hook",
         "sound_profile": "bright_pop_electro",
         "delivery_and_control": "balanced_studio",
-        "instrumental_only": False
+        "instrumental_only": False,
+        "user_narrative": None  # No narrative for ad campaigns
     }
     
     print("\nGenerating prompt (this may take 30-60 seconds)...")
@@ -56,7 +57,8 @@ async def generate_meditation_music():
         "project_blueprint": "meditation_sleep",
         "sound_profile": "lofi_cozy",
         "delivery_and_control": "exploratory_iterate",
-        "instrumental_only": True
+        "instrumental_only": True,
+        "user_narrative": "A peaceful evening meditation session after a long day at work, focusing on letting go of stress and finding inner calm."
     }
     
     async with httpx.AsyncClient(timeout=60.0) as client:
@@ -83,7 +85,8 @@ async def generate_game_music():
         "project_blueprint": "video_game_action_loop",
         "sound_profile": "epic_cinematic",
         "delivery_and_control": "balanced_studio",
-        "instrumental_only": True
+        "instrumental_only": True,
+        "user_narrative": "An epic boss battle in a fantasy RPG. The hero faces a dragon in an ancient volcano. The music should build tension and feel heroic."
     }
     
     async with httpx.AsyncClient(timeout=60.0) as client:
@@ -113,7 +116,8 @@ async def batch_generate_prompts():
                 "project_blueprint": "podcast_voiceover_loop",
                 "sound_profile": "lofi_cozy",
                 "delivery_and_control": "balanced_studio",
-                "instrumental_only": True
+                "instrumental_only": True,
+                "user_narrative": None
             }
         },
         {
@@ -122,7 +126,8 @@ async def batch_generate_prompts():
                 "project_blueprint": "ad_brand_fast_hook",
                 "sound_profile": "indie_live_band",
                 "delivery_and_control": "balanced_studio",
-                "instrumental_only": False
+                "instrumental_only": False,
+                "user_narrative": None
             }
         },
         {
@@ -131,7 +136,8 @@ async def batch_generate_prompts():
                 "project_blueprint": "standalone_song_mini",
                 "sound_profile": "dark_trap_night",
                 "delivery_and_control": "exploratory_iterate",
-                "instrumental_only": True
+                "instrumental_only": True,
+                "user_narrative": "Late night in the city, neon lights reflecting off wet streets. A story of ambition and hustle."
             }
         }
     ]
@@ -197,7 +203,8 @@ async def with_custom_headers():
         "project_blueprint": "ad_brand_fast_hook",
         "sound_profile": "bright_pop_electro",
         "delivery_and_control": "balanced_studio",
-        "instrumental_only": False
+        "instrumental_only": False,
+        "user_narrative": None
     }
     
     custom_request_id = "my-custom-request-id-12345"

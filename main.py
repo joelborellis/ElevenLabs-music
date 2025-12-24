@@ -49,7 +49,7 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 
 # Application routers
-from routers import prompt_router
+from routers import prompt_router, plan_router, render_router
 
 
 # ============================================================================
@@ -82,7 +82,11 @@ class Settings(BaseSettings):
     environment: str = "development"
     
     # CORS settings
-    cors_origins: list[str] = ["http://localhost:3000", "http://localhost:8000"]
+    cors_origins: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",  # Vite dev server
+        "http://localhost:8000"
+    ]
     
     # OpenTelemetry settings
     otel_enabled: bool = True
@@ -306,6 +310,12 @@ if settings.otel_enabled:
 # Include the prompt generation router
 app.include_router(prompt_router)
 
+# Include the composition plan router
+app.include_router(plan_router)
+
+# Include the music render router
+app.include_router(render_router)
+
 
 # ============================================================================
 # EXCEPTION HANDLERS
@@ -398,6 +408,8 @@ async def root(request: Request) -> dict:
             "readiness": "/ready",
             "liveness": "/alive",
             "prompt": "/prompt",
+            "plan": "/plan",
+            "render": "/render",
             "docs": "/docs",
             "openapi": "/openapi.json"
         },

@@ -55,6 +55,10 @@ class PromptGenerationRequest(BaseModel):
         default=False,
         description="Override to force instrumental-only output regardless of project blueprint"
     )
+    user_narrative: str | None = Field(
+        default=None,
+        description="Freeform story/occasion/people details to guide lyrics and vocal tone"
+    )
     
     model_config = {
         "json_schema_extra": {
@@ -63,13 +67,22 @@ class PromptGenerationRequest(BaseModel):
                     "project_blueprint": "ad_brand_fast_hook",
                     "sound_profile": "bright_pop_electro",
                     "delivery_and_control": "balanced_studio",
-                    "instrumental_only": False
+                    "instrumental_only": False,
+                    "user_narrative": None
+                },
+                {
+                    "project_blueprint": "standalone_song_mini",
+                    "sound_profile": "indie_live_band",
+                    "delivery_and_control": "balanced_studio",
+                    "instrumental_only": False,
+                    "user_narrative": "A love song for my wife Sarah on our 10th wedding anniversary. We met at a coffee shop in Seattle and she loves rainy days and acoustic guitar."
                 },
                 {
                     "project_blueprint": "meditation_sleep",
                     "sound_profile": "lofi_cozy",
                     "delivery_and_control": "exploratory_iterate",
-                    "instrumental_only": True
+                    "instrumental_only": True,
+                    "user_narrative": None
                 }
             ]
         }

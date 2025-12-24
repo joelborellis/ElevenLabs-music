@@ -36,6 +36,7 @@ tracer = trace.get_tracer(__name__)
     - **sound_profile**: Defines the genre and sonic characteristics (e.g., bright pop, dark trap, lofi)
     - **delivery_and_control**: Defines workflow and output preferences (e.g., exploratory, balanced, blueprint-first)
     - **instrumental_only**: Optional override to force instrumental output regardless of blueprint
+    - **user_narrative**: Optional freeform story/occasion/people details to guide lyrics and vocal tone
     
     ## Example Request
     
@@ -44,7 +45,8 @@ tracer = trace.get_tracer(__name__)
       "project_blueprint": "ad_brand_fast_hook",
       "sound_profile": "bright_pop_electro",
       "delivery_and_control": "balanced_studio",
-      "instrumental_only": false
+      "instrumental_only": false,
+      "user_narrative": null
     }
     ```
     """,
@@ -61,7 +63,8 @@ tracer = trace.get_tracer(__name__)
                             "project_blueprint": "ad_brand_fast_hook",
                             "sound_profile": "bright_pop_electro",
                             "delivery_and_control": "balanced_studio",
-                            "instrumental_only": False
+                            "instrumental_only": False,
+                            "user_narrative": None
                         }
                     }
                 }
@@ -104,14 +107,17 @@ async def generate_prompt(
         span.set_attribute("request.id", request_id)
         
         try:
+            # Log the full JSON request payload for debugging
+            request_json = request_data.model_dump_json(indent=2)
             logger.info(
-                f"Received prompt generation request",
+                f"Received prompt generation request - JSON payload:\n{request_json}",
                 extra={
                     "request_id": request_id,
                     "project_blueprint": request_data.project_blueprint.value,
                     "sound_profile": request_data.sound_profile.value,
                     "delivery_and_control": request_data.delivery_and_control.value,
                     "instrumental_only": request_data.instrumental_only,
+                    "user_narrative": request_data.user_narrative,
                 }
             )
             

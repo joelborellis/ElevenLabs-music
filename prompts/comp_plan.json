@@ -1,0 +1,88 @@
+{
+  "positive_global_styles": [
+    "electronic pop",
+    "high-energy",
+    "uplifting",
+    "euphoric",
+    "EDM",
+    "122 bpm",
+    "E major key",
+    "4/4 time",
+    "catchy",
+    "bright synths",
+    "punchy drums",
+    "clean bass line",
+    "radio-polished production",
+    "instrumental"
+  ],
+  "negative_global_styles": [
+    "vocals",
+    "lyrics",
+    "slow",
+    "dark",
+    "acoustic",
+    "lo-fi",
+    "cluttered midrange"
+  ],
+  "sections": [
+    {
+      "section_name": "Instant Hook",
+      "positive_local_styles": [
+        "immediate energetic intro",
+        "catchy synth lead melody",
+        "driving drum machine",
+        "pulsing bass",
+        "attention-grabbing"
+      ],
+      "negative_local_styles": [
+        "slow buildup",
+        "vocals",
+        "ambient",
+        "sparse"
+      ],
+      "duration_ms": 3000,
+      "lines": [],
+      "source_from": null
+    },
+    {
+      "section_name": "Quick Build",
+      "positive_local_styles": [
+        "rapid build-up",
+        "synth risers",
+        "increasing percussion",
+        "filter sweep",
+        "rising tension"
+      ],
+      "negative_local_styles": [
+        "static energy",
+        "drop in intensity",
+        "vocals",
+        "melody disappears"
+      ],
+      "duration_ms": 3000,
+      "lines": [],
+      "source_from": null
+    },
+    {
+      "section_name": "Climax and Button Finish",
+      "positive_local_styles": [
+        "energetic climax",
+        "full synth layers",
+        "powerful beat",
+        "memorable melodic resolution",
+        "satisfying button stinger ending",
+        "sharp cutoff",
+        "final impactful chord"
+      ],
+      "negative_local_styles": [
+        "fade out",
+        "vocals",
+        "anticlimactic",
+        "lingering sounds"
+      ],
+      "duration_ms": 4000,
+      "lines": [],
+      "source_from": null
+    }
+  ]
+}
