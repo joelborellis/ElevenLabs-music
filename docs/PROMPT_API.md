@@ -31,7 +31,8 @@ Generates a music prompt based on three preset selections using an AI agent with
   "project_blueprint": "ad_brand_fast_hook",
   "sound_profile": "bright_pop_electro",
   "delivery_and_control": "balanced_studio",
-  "instrumental_only": false
+  "instrumental_only": false,
+  "user_narrative": null
 }
 ```
 
@@ -60,6 +61,9 @@ Generates a music prompt based on three preset selections using an AI agent with
 
 - **instrumental_only** (optional, default: false): Override to force instrumental output
 
+- **user_narrative** (optional, default: null): Freeform story, occasion, or people details to guide lyrics and vocal tone. When provided, the generated prompt will incorporate these details to shape lyrical content, vocal tone, and overall emotional intent.
+  - Example: `"A love song for my wife Sarah on our 10th wedding anniversary. We met at a coffee shop in Seattle and she loves rainy days and acoustic guitar."`
+
 ### Response
 
 ```json
@@ -71,7 +75,8 @@ Generates a music prompt based on three preset selections using an AI agent with
     "project_blueprint": "ad_brand_fast_hook",
     "sound_profile": "bright_pop_electro",
     "delivery_and_control": "balanced_studio",
-    "instrumental_only": false
+    "instrumental_only": false,
+    "user_narrative": null
   }
 }
 ```
@@ -94,7 +99,22 @@ curl -X POST http://localhost:8000/prompt \
     "project_blueprint": "meditation_sleep",
     "sound_profile": "lofi_cozy",
     "delivery_and_control": "exploratory_iterate",
-    "instrumental_only": true
+    "instrumental_only": true,
+    "user_narrative": null
+  }'
+```
+
+#### Using cURL (with user narrative)
+
+```bash
+curl -X POST http://localhost:8000/prompt \
+  -H "Content-Type: application/json" \
+  -d '{
+    "project_blueprint": "standalone_song_mini",
+    "sound_profile": "indie_live_band",
+    "delivery_and_control": "balanced_studio",
+    "instrumental_only": false,
+    "user_narrative": "A love song for my wife Sarah on our 10th wedding anniversary. We met at a coffee shop in Seattle and she loves rainy days and acoustic guitar."
   }'
 ```
 
@@ -112,13 +132,38 @@ async def generate_prompt():
                 "project_blueprint": "ad_brand_fast_hook",
                 "sound_profile": "bright_pop_electro",
                 "delivery_and_control": "balanced_studio",
-                "instrumental_only": False
+                "instrumental_only": False,
+                "user_narrative": None
             }
         )
         result = response.json()
         print(f"Generated prompt:\n{result['prompt']}")
 
 asyncio.run(generate_prompt())
+```
+
+#### Using Python (httpx with user narrative)
+
+```python
+import httpx
+import asyncio
+
+async def generate_prompt_with_narrative():
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "http://localhost:8000/prompt",
+            json={
+                "project_blueprint": "standalone_song_mini",
+                "sound_profile": "indie_live_band",
+                "delivery_and_control": "balanced_studio",
+                "instrumental_only": False,
+                "user_narrative": "A birthday song for my daughter Emma who just turned 5. She loves unicorns, rainbows, and dancing in the garden."
+            }
+        )
+        result = response.json()
+        print(f"Generated prompt:\n{result['prompt']}")
+
+asyncio.run(generate_prompt_with_narrative())
 ```
 
 #### Using Python (requests)
@@ -132,7 +177,8 @@ response = requests.post(
         "project_blueprint": "video_game_action_loop",
         "sound_profile": "epic_cinematic",
         "delivery_and_control": "balanced_studio",
-        "instrumental_only": True
+        "instrumental_only": True,
+        "user_narrative": None
     }
 )
 

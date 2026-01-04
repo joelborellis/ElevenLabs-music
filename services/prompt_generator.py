@@ -90,6 +90,7 @@ class PromptGeneratorService:
         """
         if self._agent is None:
             self._agent = Agent(
+                model="gpt-5.2",
                 name="prompt_generator_agent",
                 instructions=self.instructions,
                 output_type=str,  # Agent outputs a markdown prompt (string)
@@ -125,7 +126,8 @@ class PromptGeneratorService:
                 f"blueprint={request.project_blueprint.value}, "
                 f"profile={request.sound_profile.value}, "
                 f"control={request.delivery_and_control.value}, "
-                f"instrumental={request.instrumental_only}"
+                f"instrumental={request.instrumental_only}, "
+                f"user_narrative={'provided' if request.user_narrative else 'none'}"
             )
             
             # Run the agent to generate the prompt

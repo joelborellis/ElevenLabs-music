@@ -89,6 +89,116 @@ curl -X POST http://localhost:8000/prompt \
 }
 ```
 
+### POST /plan
+
+Generate a composition plan from a text prompt using the ElevenLabs music API.
+
+**Request:**
+```bash
+curl -X POST http://localhost:8000/plan \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Create an uplifting electronic pop track with a catchy hook",
+    "music_length_ms": 30000
+  }'
+```
+
+**Request Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `prompt` | string | Yes | - | Text prompt describing the desired music composition |
+| `music_length_ms` | integer | No | 30000 | Total length in milliseconds (1000-300000) |
+
+**Response:**
+```json
+{
+  "positive_global_styles": ["electronic pop", "uplifting", "high-energy", "122 bpm"],
+  "negative_global_styles": ["dark", "slow tempo", "acoustic"],
+  "sections": [
+    {
+      "section_name": "Instant Hook",
+      "positive_local_styles": ["immediate start", "punchy drums", "bright synth chords"],
+      "negative_local_styles": ["slow build-up"],
+      "duration_ms": 3000,
+      "lines": [],
+      "source_from": null
+    }
+  ]
+}
+```
+
+### POST /render
+
+Render music from a composition plan using the ElevenLabs API.
+
+**Request:**
+```bash
+curl -X POST http://localhost:8000/render \
+  -H "Content-Type: application/json" \
+  -d '{
+    "positive_global_styles": ["indie pop", "uplifting", "95 bpm"],
+    "negative_global_styles": ["heavy reverb", "electronic drums"],
+    "sections": [
+      {
+        "section_name": "Intro",
+        "positive_local_styles": ["clean electric guitar riff", "minimal instrumentation"],
+        "negative_local_styles": ["full band", "vocals"],
+        "duration_ms": 4000,
+        "lines": [],
+        "source_from": null
+      }
+    ]
+  }'
+```
+
+**Request Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `positive_global_styles` | array[string] | No | Global style descriptors to include |
+| `negative_global_styles` | array[string] | No | Global style descriptors to avoid |
+| `sections` | array[Section] | No | List of composition sections |
+
+**Section Object:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `section_name` | string | Yes | Name of the section (e.g., "Intro", "Verse") |
+| `positive_local_styles` | array[string] | No | Style descriptors for this section |
+| `negative_local_styles` | array[string] | No | Styles to avoid in this section |
+| `duration_ms` | integer | Yes | Duration in milliseconds |
+| `lines` | array[string] | No | Lyric lines for this section |
+| `source_from` | string | No | Source reference for this section |
+
+**Response:**
+```json
+{
+  "filename": "track_abc123.mp3",
+  "file_path": "/output/music/track_abc123.mp3",
+  "download_url": "/render/download/track_abc123.mp3",
+  "content_type": "audio/mpeg",
+  "file_size_bytes": 524288,
+  "composition_plan": { ... },
+  "song_metadata": { ... },
+  "request_id": "550e8400-e29b-41d4-a716-446655440000",
+  "timestamp": "2025-12-22T10:30:00"
+}
+```
+
+### GET /render/download/{filename}
+
+Download a previously rendered audio file.
+
+```bash
+curl -O http://localhost:8000/render/download/track_abc123.mp3
+```
+
+### GET /render/stream/{filename}
+
+Stream a previously rendered audio file for playback.
+
+```bash
+curl http://localhost:8000/render/stream/track_abc123.mp3
+```
+
 ### Available Presets
 
 #### Project Blueprint (use case & structure)
@@ -121,21 +231,33 @@ For detailed API documentation, see [docs/PROMPT_API.md](docs/PROMPT_API.md).
 ├── main.py                 # FastAPI application entry point
 ├── models/                 # Pydantic models
 │   ├── __init__.py
-│   └── prompt.py          # Request/response models
+│   ├── prompt.py          # Prompt request/response models
+│   ├── plan.py            # Composition plan models
+│   └── render.py          # Render request/response models
 ├── services/              # Business logic
 │   ├── __init__.py
-│   └── prompt_generator.py  # OpenAI Agents integration
+│   ├── prompt_generator.py  # OpenAI Agents integration
+│   ├── plan_generator.py    # ElevenLabs plan generation
+│   └── render_service.py    # ElevenLabs music rendering
 ├── routers/               # API routes
 │   ├── __init__.py
-│   └── prompt.py          # /prompt endpoint
+│   ├── prompt.py          # /prompt endpoint
+│   ├── plan.py            # /plan endpoint
+│   └── render.py          # /render endpoint
 ├── prompts/               # System prompt templates
 │   └── system_prompt_eleven_music_3choice_wizard_prompt_architect_NEW.md
+├── output/                # Generated audio files
+│   └── music/             # Rendered music files
 ├── testing/               # Test scripts
 │   ├── test_agents.py            # Original CLI wizard
 │   ├── test_prompt_endpoint.py   # API endpoint tests
+│   ├── test_plan_endpoint.py     # Plan endpoint tests
+│   ├── test_render_endpoint.py   # Render endpoint tests
 │   └── ...
 ├── docs/                  # Documentation
-│   └── PROMPT_API.md      # Detailed API docs
+│   ├── PROMPT_API.md      # Prompt API docs
+│   ├── PLAN_API.md        # Plan API docs
+│   └── RENDER_API.md      # Render API docs
 ├── pyproject.toml         # Project dependencies
 └── README.md              # This file
 ```

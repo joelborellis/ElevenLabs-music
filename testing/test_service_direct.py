@@ -30,7 +30,8 @@ async def test_service_directly():
         project_blueprint=ProjectBlueprint.AD_BRAND_FAST_HOOK,
         sound_profile=SoundProfile.BRIGHT_POP_ELECTRO,
         delivery_and_control=DeliveryAndControl.BALANCED_STUDIO,
-        instrumental_only=False
+        instrumental_only=False,
+        user_narrative="I want a song to commemorate the engagement of my sone William."
     )
     
     print("\nTest Request:")
@@ -38,6 +39,7 @@ async def test_service_directly():
     print(f"  Sound: {request.sound_profile.value}")
     print(f"  Delivery: {request.delivery_and_control.value}")
     print(f"  Instrumental: {request.instrumental_only}")
+    print(f"  User Narrative: {request.user_narrative}")
     
     print("\n" + "=" * 80)
     print("Generating prompt...")

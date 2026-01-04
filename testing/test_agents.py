@@ -55,11 +55,13 @@ class WizardSelectionInput(BaseModel):
     sound_profile: SoundProfile
     delivery_and_control: DeliveryAndControl
     instrumental_only: bool = False
+    user_narrative: str | None = None
 
 
 # IMPORTANT: In the Agents SDK, the input model should be passed via `output_type=...`
 # (not `prompt=...`). This makes `final_output` parse/validate into your model type.
 prompt_generator_agent = Agent(
+    model="gpt-5.2",
     name="prompt_generator_agent",
     instructions=PROMPT_GENERATOR_INSTRUCTIONS,
     output_type=str,  # your agent's final output is a markdown prompt (string)
@@ -104,13 +106,20 @@ async def main():
     sound_profile = _pick_from_enum("Sound Profile", SoundProfile)
     delivery_and_control = _pick_from_enum("Delivery & Control", DeliveryAndControl)
     instrumental_only = _prompt_bool("Instrumental only override?", default=False)
+    
+    # Prompt for optional user narrative
+    print("\nUser Narrative (optional - press Enter to skip):")
+    print("  Describe the story, occasion, or people to guide lyrics and vocal tone.")
+    user_narrative_input = input("  > ").strip()
+    user_narrative = user_narrative_input if user_narrative_input else None
 
     # Build a validated payload (IDs)
     wizard_input = WizardSelectionInput(
         project_blueprint=project_blueprint,
         sound_profile=sound_profile,
         delivery_and_control=delivery_and_control,
-        instrumental_only=False,
+        instrumental_only=instrumental_only,
+        user_narrative=user_narrative,
     )
 
     # The agent expects the three keys: project_blueprint, sound_profile, delivery_and_control.
