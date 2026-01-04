@@ -45,7 +45,7 @@ class PromptGeneratorService:
             instructions_path = (
                 Path(__file__).parent.parent
                 / "prompts"
-                / "system_prompt_eleven_music_3choice_wizard_prompt_architect_NEW.md"
+                / "generate_music_prompt.md"
             )
         
         self.instructions_path = instructions_path
