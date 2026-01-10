@@ -12,12 +12,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from agents import Agent, Runner
-from pydantic import BaseModel
 
 from models.prompt import (
-    ProjectBlueprint,
-    SoundProfile,
-    DeliveryAndControl,
     PromptGenerationRequest,
 )
 
