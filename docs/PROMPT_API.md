@@ -69,6 +69,8 @@ Generates a music prompt based on three preset selections using an AI agent with
 ```json
 {
   "prompt": "Create a 30-second uplifting electronic track in E major...",
+  "title": "Bright Pop Anthem",
+  "description": "A 30-second uplifting electronic ad spot with punchy synths and an immediate hook.",
   "request_id": "550e8400-e29b-41d4-a716-446655440000",
   "timestamp": "2025-12-22T10:30:00Z",
   "input_parameters": {
@@ -83,7 +85,9 @@ Generates a music prompt based on three preset selections using an AI agent with
 
 #### Response Fields
 
-- **prompt**: The generated music prompt (markdown string) ready for ElevenLabs music-1 model
+- **prompt**: The generated music prompt (plain text) ready for ElevenLabs music-1 model
+- **title**: AI-generated short, catchy title for the track (3-6 words)
+- **description**: AI-generated clear, concise description of the track (1-2 sentences)
 - **request_id**: Unique identifier for tracking and debugging
 - **timestamp**: ISO 8601 timestamp of generation
 - **input_parameters**: Echo of the input parameters used
@@ -137,6 +141,8 @@ async def generate_prompt():
             }
         )
         result = response.json()
+        print(f"Title: {result['title']}")
+        print(f"Description: {result['description']}")
         print(f"Generated prompt:\n{result['prompt']}")
 
 asyncio.run(generate_prompt())
@@ -161,6 +167,8 @@ async def generate_prompt_with_narrative():
             }
         )
         result = response.json()
+        print(f"Title: {result['title']}")
+        print(f"Description: {result['description']}")
         print(f"Generated prompt:\n{result['prompt']}")
 
 asyncio.run(generate_prompt_with_narrative())
@@ -183,6 +191,8 @@ response = requests.post(
 )
 
 result = response.json()
+print(f"Title: {result['title']}")
+print(f"Description: {result['description']}")
 print(f"Generated prompt:\n{result['prompt']}")
 ```
 
@@ -269,4 +279,4 @@ The core logic remains the same:
 - Uses the same system prompt instructions
 - Same OpenAI Agents SDK integration
 - Same three-choice wizard approach
-- Same output format (markdown prompt string)
+- Enhanced output format with AI-generated title and description alongside the prompt

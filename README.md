@@ -78,6 +78,8 @@ curl -X POST http://localhost:8000/prompt \
 ```json
 {
   "prompt": "Create a 30-second uplifting electronic track in E major at 120 BPM...",
+  "title": "Bright Pop Anthem",
+  "description": "A 30-second uplifting electronic ad spot with punchy synths and an immediate hook.",
   "request_id": "550e8400-e29b-41d4-a716-446655440000",
   "timestamp": "2025-12-22T10:30:00Z",
   "input_parameters": {
@@ -88,6 +90,8 @@ curl -X POST http://localhost:8000/prompt \
   }
 }
 ```
+
+The response includes an AI-generated `title` and `description` based on the generated prompt, making it easy to catalog and identify tracks.
 
 ### POST /plan
 

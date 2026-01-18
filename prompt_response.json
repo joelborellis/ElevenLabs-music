@@ -1,0 +1,16 @@
+{
+    "prompt": "Create a 30-second short-form ad/brand spot in bright pop electro EDM, voiceover-friendly (NO sung lyrics). Radio-polished, clean modern mix with a strong immediate hook and a stinger/button ending. Tempo 120 BPM, straight 4/4 groove, tonal center E major, simple catchy diatonic harmony.\n\nStructure: start with the hook instantly at 0s (high-energy synth motif + punchy drums), fast build through the midsection with subtle rises and added layers (tight kick/snare, crisp hats, clean bass, bright plucks/leads), then land a clear, satisfying button ending at ~0:29\u20130:30. Keep the midrange uncluttered and leave clear space for voiceover from 0s onward (avoid busy lead lines competing with VO; use sidechain and arrangement gaps). Include a brief micro-break or filter-down moment around 0:15\u20130:18 to reset attention, then a final lift into the ending.\n\nBrand-safe CTA intent (voiceover copy suggestion, not sung): \n\u201cMy Crazy Song\u2014turn it up.\u201d\n\u201cBright, bold, and unforgettable.\u201d\n\u201cTap play and feel the rush.\u201d",
+    "title": "My Crazy Song",
+    "description": "My song description",
+    "request_id": "705044bf-0a81-41b1-ad4e-0cb62d978cb5",
+    "timestamp": "2026-01-18T16:04:46.952589",
+    "input_parameters": {
+        "project_blueprint": "ad_brand_fast_hook",
+        "sound_profile": "bright_pop_electro",
+        "delivery_and_control": "balanced_studio",
+        "instrumental_only": false,
+        "user_narrative": null,
+        "title": "My Crazy Song",
+        "description": "My song description"
+    }
+}

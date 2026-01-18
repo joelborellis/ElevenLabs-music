@@ -105,11 +105,12 @@ class PlanGenerationRequest(BaseModel):
         ...,
         description="Text prompt describing the desired music composition"
     )
-    music_length_ms: int = Field(
-        default=30000,
+    music_length_ms: Optional[int] = Field(
+        default=None,
         ge=1000,
         le=300000,
-        description="Total length of the music in milliseconds (1-300 seconds)"
+        description="Total length of the music in milliseconds (1-300 seconds). "
+                    "If not provided, will be extracted from the prompt or default to 30 seconds."
     )
     
     model_config = {

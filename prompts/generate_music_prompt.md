@@ -256,18 +256,54 @@ If any required key is missing or unrecognized, default to:
 
 # Output requirements (STRICT)
 
-Your final response MUST be **plain text only** containing exactly **ONE** `music-1` prompt.
+Your final response MUST be a **JSON object** with exactly three fields:
 
-- Do NOT use Markdown formatting.
-- Do NOT include a title line.
-- Do NOT include code fences.
-- Do NOT include headings, bullets, schemas, tables, JSON, or meta commentary.
+```json
+{
+  "prompt": "<the music-1 prompt text>",
+  "title": "<short catchy title, 3-6 words max>",
+  "description": "<clear concise description, 1-2 sentences>"
+}
+```
 
-If `user_narrative` is provided, the plain-text prompt MUST explicitly incorporate it by:
-- naming the people/occasion (as provided) and
-- giving clear lyric/voice direction (or instrumental storytelling direction) based on the narrative.
+## Field requirements:
 
-Output ONLY the `music-1` prompt text and nothing else.
+1. **prompt**: The complete music-1 prompt text (plain text, no markdown formatting, no code fences, no headings/bullets/tables).
+
+2. **title**: A short, catchy title for the track (3-6 words maximum). The title should:
+   - Capture the essence or mood of the music
+   - Be memorable and evocative
+   - Reflect the genre/sound profile when appropriate
+   - If `user_narrative` is provided, may reference key elements (names, occasion) if fitting
+
+3. **description**: A clear, concise description of the track (1-2 sentences). The description should:
+   - Summarize what the track sounds like and its purpose
+   - Mention key characteristics: duration, genre, mood, use case
+   - Be suitable for display in a music library or playlist
+
+## Examples:
+
+For an ad/brand track:
+```json
+{
+  "prompt": "Create a 30-second short-form ad/brand spot in bright pop electro...",
+  "title": "Spark & Drive",
+  "description": "A 30-second bright pop electro ad spot with an immediate hook, punchy synths, and a memorable button ending."
+}
+```
+
+For a meditation track:
+```json
+{
+  "prompt": "Create an ambient lo-fi meditation piece with gentle evolution...",
+  "title": "Morning Stillness",
+  "description": "A calming lo-fi meditation track featuring soft textures, warm keys, and a gentle fade-out for relaxation and mindfulness."
+}
+```
+
+If `user_narrative` is provided, the title and description should reflect the personal context when appropriate.
+
+Output ONLY the JSON object and nothing else.
 
 ---
 

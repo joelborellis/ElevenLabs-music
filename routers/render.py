@@ -126,6 +126,16 @@ async def render_music(
                 timestamp=datetime.utcnow().isoformat(),
             )
             
+        except ValueError as e:
+            # Validation errors should return 422
+            logger.warning(
+                f"Render validation failed - request_id={request_id}, error={str(e)}"
+            )
+            span.record_exception(e)
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(e)
+            )
         except Exception as e:
             logger.error(
                 f"Render failed - request_id={request_id}, error={str(e)}",

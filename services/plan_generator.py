@@ -4,6 +4,7 @@ Service layer for composition plan generation using ElevenLabs API.
 
 import logging
 import os
+import re
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -19,6 +20,49 @@ from models.plan import (
 
 
 logger = logging.getLogger(__name__)
+
+# Default music length in milliseconds (30 seconds)
+DEFAULT_MUSIC_LENGTH_MS = 30000
+
+
+def extract_duration_from_prompt(prompt: str) -> Optional[int]:
+    """
+    Extract duration in milliseconds from prompt text.
+    
+    Looks for patterns like:
+    - "30-second", "30 second", "30 seconds"
+    - "2-minute", "2 minute", "2 minutes"
+    - "1.5 minute", "1.5 minutes"
+    
+    Args:
+        prompt: The text prompt to parse.
+        
+    Returns:
+        Duration in milliseconds if found, None otherwise.
+    """
+    # Pattern for seconds: "30-second", "30 second", "30 seconds", "30-seconds"
+    seconds_pattern = r'(\d+(?:\.\d+)?)\s*[-\s]?\s*seconds?'
+    
+    # Pattern for minutes: "2-minute", "2 minute", "2 minutes", "1.5 minutes"
+    minutes_pattern = r'(\d+(?:\.\d+)?)\s*[-\s]?\s*minutes?'
+    
+    # Try to find seconds first (more specific)
+    seconds_match = re.search(seconds_pattern, prompt, re.IGNORECASE)
+    if seconds_match:
+        seconds = float(seconds_match.group(1))
+        duration_ms = int(seconds * 1000)
+        logger.info(f"Extracted duration from prompt: {seconds} seconds ({duration_ms}ms)")
+        return duration_ms
+    
+    # Try to find minutes
+    minutes_match = re.search(minutes_pattern, prompt, re.IGNORECASE)
+    if minutes_match:
+        minutes = float(minutes_match.group(1))
+        duration_ms = int(minutes * 60 * 1000)
+        logger.info(f"Extracted duration from prompt: {minutes} minutes ({duration_ms}ms)")
+        return duration_ms
+    
+    return None
 
 
 class PlanGeneratorService:
@@ -52,7 +96,7 @@ class PlanGeneratorService:
         
         Args:
             request: The validated plan generation request containing
-                    the prompt and music_length_ms.
+                    the prompt and optionally music_length_ms.
         
         Returns:
             The generated composition plan.
@@ -61,15 +105,37 @@ class PlanGeneratorService:
             RuntimeError: If plan generation fails.
         """
         try:
+            # Determine the music length to use:
+            # 1. If explicitly provided, use that value
+            # 2. Otherwise, try to extract from the prompt
+            # 3. Fall back to default (30 seconds)
+            if request.music_length_ms is not None:
+                music_length_ms = request.music_length_ms
+                logger.info(f"Using explicitly provided music_length_ms: {music_length_ms}ms")
+            else:
+                extracted_duration = extract_duration_from_prompt(request.prompt)
+                if extracted_duration is not None:
+                    # Clamp to valid range (1-300 seconds)
+                    music_length_ms = max(1000, min(300000, extracted_duration))
+                    if music_length_ms != extracted_duration:
+                        logger.warning(
+                            f"Extracted duration {extracted_duration}ms clamped to {music_length_ms}ms"
+                        )
+                else:
+                    music_length_ms = DEFAULT_MUSIC_LENGTH_MS
+                    logger.info(
+                        f"No duration found in prompt, using default: {music_length_ms}ms"
+                    )
+            
             logger.info(
                 f"Generating composition plan for prompt: '{request.prompt[:50]}...' "
-                f"(length: {request.music_length_ms}ms)"
+                f"(length: {music_length_ms}ms)"
             )
             
             # Call the ElevenLabs API to create the composition plan
             composition_plan = self._client.music.composition_plan.create(
                 prompt=request.prompt,
-                music_length_ms=request.music_length_ms,
+                music_length_ms=music_length_ms,
             )
             
             # Convert the ElevenLabs response to our model

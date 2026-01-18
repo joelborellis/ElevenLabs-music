@@ -5,6 +5,7 @@ This script demonstrates how to use the /prompt endpoint programmatically.
 """
 
 import asyncio
+import json
 import httpx
 from pprint import pprint
 
@@ -46,9 +47,15 @@ async def test_prompt_generation():
                 print("=" * 80)
                 print(f"\nRequest ID: {result['request_id']}")
                 print(f"Timestamp: {result['timestamp']}")
+                print(f"Title: {result.get('title')}")
+                print(f"Description: {result.get('description')}")
                 print(f"\nPrompt ({len(result['prompt'])} characters):")
                 print("-" * 80)
                 print(result["prompt"])
+                print("-" * 80)
+                print("\nFull JSON Response:")
+                print("-" * 80)
+                print(json.dumps(result, indent=2))
                 print("-" * 80)
             else:
                 print(f"\n✗ Error: {response.status_code}")

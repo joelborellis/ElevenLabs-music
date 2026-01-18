@@ -125,7 +125,24 @@ def test_render_endpoint():
         
         result = response.json()
         print(f"Status: {response.status_code}")
-        print(f"Response:\n{json.dumps(result, indent=2)}")
+        print("\n" + "=" * 60)
+        print("FULL RESPONSE DETAILS")
+        print("=" * 60)
+        
+        # Print each top-level key and its value
+        for key, value in result.items():
+            print(f"\n--- {key} ---")
+            if isinstance(value, dict):
+                print(json.dumps(value, indent=2))
+            elif isinstance(value, list):
+                print(json.dumps(value, indent=2))
+            else:
+                print(value)
+        
+        print("\n" + "=" * 60)
+        print("RAW JSON RESPONSE")
+        print("=" * 60)
+        print(json.dumps(result, indent=2))
         
         # Validate response structure
         assert "filename" in result, "Response missing 'filename'"
@@ -260,24 +277,33 @@ def test_render_validation():
     
     url = f"{BASE_URL}/render"
     
-    # Test with empty sections
+    # Test with empty sections - should return 422
     payload = {
         "positive_global_styles": ["test"],
         "negative_global_styles": [],
         "sections": []
     }
     
-    print(f"\nTesting render with empty sections")
+    print(f"\nTesting render with empty sections (should return 422)")
     print("-" * 50)
     
     try:
         response = requests.post(url, json=payload, timeout=60)
         print(f"Status: {response.status_code}")
-        if response.status_code >= 400:
+        
+        if response.status_code == 422:
+            print(f"✅ Correctly returned 422 for empty sections")
+            print(f"Response: {response.json()}")
+            return True
+        elif response.status_code >= 400:
             print(f"Response: {response.text[:500]}")
-        print("Note: API behavior with empty sections may vary")
+            return False
+        else:
+            print(f"❌ Expected 422, got {response.status_code}")
+            return False
     except Exception as e:
         print(f"❌ Error: {e}")
+        return False
 
 
 def run_all_tests():

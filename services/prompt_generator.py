@@ -15,6 +15,7 @@ from agents import Agent, Runner
 
 from models.prompt import (
     PromptGenerationRequest,
+    AgentPromptOutput,
 )
 
 
@@ -89,7 +90,7 @@ class PromptGeneratorService:
                 model="gpt-5.2",
                 name="prompt_generator_agent",
                 instructions=self.instructions,
-                output_type=str,  # Agent outputs a markdown prompt (string)
+                output_type=AgentPromptOutput,  # Agent outputs structured prompt with title and description
             )
             logger.info("Created OpenAI Agent for prompt generation")
         
@@ -98,7 +99,7 @@ class PromptGeneratorService:
     async def generate_prompt(
         self,
         request: PromptGenerationRequest,
-    ) -> str:
+    ) -> AgentPromptOutput:
         """
         Generate a music prompt based on the wizard selections.
         
@@ -108,7 +109,7 @@ class PromptGeneratorService:
                     and instrumental_only settings.
         
         Returns:
-            The generated music prompt as a markdown string.
+            The generated AgentPromptOutput containing prompt, title, and description.
         
         Raises:
             RuntimeError: If prompt generation fails.
@@ -132,14 +133,14 @@ class PromptGeneratorService:
                 user_message,
             )
             
-            generated_prompt = result.final_output
+            generated_output = result.final_output
             
-            if not generated_prompt or not isinstance(generated_prompt, str):
+            if not generated_output or not isinstance(generated_output, AgentPromptOutput):
                 raise RuntimeError("Agent returned invalid output")
             
-            logger.info(f"Successfully generated prompt ({len(generated_prompt)} chars)")
+            logger.info(f"Successfully generated prompt ({len(generated_output.prompt)} chars)")
             
-            return generated_prompt
+            return generated_output
             
         except Exception as e:
             logger.error(f"Failed to generate prompt: {e}", exc_info=True)

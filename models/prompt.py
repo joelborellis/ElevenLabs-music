@@ -89,12 +89,37 @@ class PromptGenerationRequest(BaseModel):
     }
 
 
+class AgentPromptOutput(BaseModel):
+    """Structured output from the prompt generator agent."""
+    
+    prompt: str = Field(
+        ...,
+        description="The generated music prompt ready for ElevenLabs music-1 model"
+    )
+    title: str = Field(
+        ...,
+        description="A short, catchy title for the generated music track (3-6 words max)"
+    )
+    description: str = Field(
+        ...,
+        description="A clear, concise description of the track (1-2 sentences)"
+    )
+
+
 class PromptGenerationResponse(BaseModel):
     """Response model for generated music prompts."""
     
     prompt: str = Field(
         ...,
         description="The generated music prompt ready for ElevenLabs music-1 model"
+    )
+    title: str | None = Field(
+        default=None,
+        description="Title for the generated music track"
+    )
+    description: str | None = Field(
+        default=None,
+        description="Description for the generated music track"
     )
     request_id: str = Field(
         ...,
@@ -114,6 +139,8 @@ class PromptGenerationResponse(BaseModel):
             "examples": [
                 {
                     "prompt": "Create a 30-second uplifting electronic track...",
+                    "title": "Bright Pop Anthem",
+                    "description": "A 30-second uplifting electronic ad spot with punchy synths and an immediate hook",
                     "request_id": "550e8400-e29b-41d4-a716-446655440000",
                     "timestamp": "2025-12-22T10:30:00Z",
                     "input_parameters": {

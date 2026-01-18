@@ -57,6 +57,8 @@ tracer = trace.get_tracer(__name__)
                 "application/json": {
                     "example": {
                         "prompt": "Create a 30-second uplifting electronic track...",
+                        "title": "Bright Pop Anthem",
+                        "description": "A 30-second uplifting electronic ad spot with punchy synths and an immediate hook",
                         "request_id": "550e8400-e29b-41d4-a716-446655440000",
                         "timestamp": "2025-12-22T10:30:00Z",
                         "input_parameters": {
@@ -126,24 +128,26 @@ async def generate_prompt(
             
             # Generate the prompt using the agent
             with tracer.start_as_current_span("agent_execution"):
-                generated_prompt = await service.generate_prompt(request_data)
+                agent_output = await service.generate_prompt(request_data)
             
             # Build response
             response = PromptGenerationResponse(
-                prompt=generated_prompt,
+                prompt=agent_output.prompt,
+                title=agent_output.title,
+                description=agent_output.description,
                 request_id=request_id,
                 timestamp=datetime.utcnow().isoformat(),
                 input_parameters=request_data,
             )
             
-            span.set_attribute("prompt.length", len(generated_prompt))
+            span.set_attribute("prompt.length", len(agent_output.prompt))
             span.set_attribute("success", True)
             
             logger.info(
                 f"Successfully generated prompt",
                 extra={
                     "request_id": request_id,
-                    "prompt_length": len(generated_prompt),
+                    "prompt_length": len(agent_output.prompt),
                 }
             )
             
