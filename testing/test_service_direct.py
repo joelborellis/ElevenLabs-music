@@ -48,13 +48,13 @@ async def test_service_directly():
     try:
         # Get service and generate prompt
         service = get_prompt_generator_service()
-        prompt = await service.generate_prompt(request)
+        result = await service.generate_prompt(request)
         
         print("\n✓ SUCCESS! Generated prompt:")
         print("=" * 80)
-        print(prompt)
+        print(result.prompt)
         print("=" * 80)
-        print(f"\nPrompt length: {len(prompt)} characters")
+        print(f"\nPrompt length: {len(result.prompt)} characters")
         
         return True
         
@@ -66,5 +66,6 @@ async def test_service_directly():
 
 
 if __name__ == "__main__":
-    result = asyncio.run(test_service_directly())
+    result = asyncio.run(test_service_directly())   
     sys.exit(0 if result else 1)
+   
