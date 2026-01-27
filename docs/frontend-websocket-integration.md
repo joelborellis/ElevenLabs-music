@@ -1,393 +1,387 @@
 # Frontend WebSocket Integration Guide
 
-This document explains how to integrate the new WebSocket-based render endpoint (`/render/ws`) into the ElevenLabs Music UI frontend to provide real-time progress updates during music generation.
+This document describes how to integrate with the `/render/ws` WebSocket endpoint for real-time music rendering with progress updates.
 
-## Overview
-
-The backend now supports a WebSocket endpoint that provides real-time progress updates during music rendering, replacing the need to show a generic spinner while waiting for the REST API response.
-
-### Benefits
-- Real-time progress feedback (0-100%)
-- Stage-by-stage status messages
-- Better user experience during long render operations
-- Same final result data as the REST endpoint
-
-## WebSocket Endpoint
-
-**URL:** `ws://localhost:8000/render/ws` (development)
-
-## Protocol
-
-### Connection Flow
+## Endpoint
 
 ```
-1. Frontend connects to WebSocket
-2. Backend sends "connected" message (progress: 0%)
-3. Frontend sends composition plan
-4. Backend sends progress updates (5% → 10% → 15% → 70% → 85% → 95% → 100%)
-5. Backend sends final result
-6. Connection closes
+ws://localhost:8000/render/ws
 ```
 
-### Message Types
+## Protocol Overview
 
-#### 1. Progress Message (Server → Client)
+```
+Client                                Server
+  |                                      |
+  |-------- Connect ------------------->|
+  |                                      |
+  |<------- progress (connected, 0%) ---|
+  |                                      |
+  |-------- render request ------------>|
+  |                                      |
+  |<------- progress (validating, 5%) --|
+  |<------- progress (validated, 10%) --|
+  |<------- progress (generating, 15%) -|
+  |<------- progress (processing, 70%) -|
+  |<------- progress (saving, 85%) -----|
+  |<------- progress (extracting, 95%) -|
+  |<------- progress (complete, 100%) --|
+  |<------- result --------------------|
+  |                                      |
+  |-------- Connection closes ----------|
+```
 
-Sent during rendering to update progress.
+## Message Types
+
+All messages are JSON objects with a `type` field that determines the message structure.
+
+### 1. Progress Message (Server → Client)
+
+Sent during rendering to indicate current progress.
 
 ```typescript
 interface ProgressMessage {
   type: "progress";
-  stage: string;      // Current stage name
-  progress_percent: number;  // 0-100
-  message: string;    // Human-readable status
-  timestamp: string;  // ISO 8601
+  stage: string;           // Current processing stage
+  progress_percent: number; // 0-100
+  message: string;         // Human-readable status
+  timestamp: string;       // ISO 8601 timestamp
 }
 ```
 
 **Progress Stages:**
 
-| Stage | Percent | Message |
-|-------|---------|---------|
-| `connected` | 0 | "Connected. Send composition plan to begin rendering." |
-| `validating` | 5 | "Validating composition plan..." |
-| `validated` | 10 | "Composition plan validated successfully" |
-| `generating` | 15 | "Starting music generation with ElevenLabs API..." |
-| `processing` | 70 | "API call complete, processing response..." |
-| `saving` | 85 | "Saving audio file to disk..." |
-| `extracting` | 95 | "Extracting metadata..." |
-| `complete` | 100 | "Render complete!" |
+| Stage | Percent | Description |
+|-------|---------|-------------|
+| `connected` | 0% | WebSocket connection established |
+| `validating` | 5% | Validating composition plan |
+| `validated` | 10% | Validation complete |
+| `generating` | 15% | ElevenLabs API call in progress |
+| `processing` | 70% | API complete, processing response |
+| `saving` | 85% | Writing audio file to disk |
+| `extracting` | 95% | Extracting metadata |
+| `complete` | 100% | Render finished |
 
-#### 2. Result Message (Server → Client)
+**Example:**
+```json
+{
+  "type": "progress",
+  "stage": "generating",
+  "progress_percent": 15,
+  "message": "Generating music with ElevenLabs API...",
+  "timestamp": "2026-01-27T22:04:31.660000"
+}
+```
 
-Sent when rendering completes successfully.
+### 2. Result Message (Server → Client)
+
+Sent after successful rendering with the final result.
 
 ```typescript
 interface ResultMessage {
   type: "result";
   data: {
-    filename: string;
-    file_path: string;
-    download_url: string;   // e.g., "/render/download/track_abc123.mp3"
-    stream_url: string;     // e.g., "/render/stream/track_abc123.mp3"
-    content_type: string;   // "audio/mpeg"
-    file_size_bytes: number;
-    composition_plan: object | null;
-    song_metadata: object | null;
-    request_id: string;
-    timestamp: string;
+    filename: string;           // e.g., "my_track_abc123.mp3"
+    file_path: string;          // Server file path
+    download_url: string;       // e.g., "/render/download/my_track_abc123.mp3"
+    stream_url: string;         // e.g., "/render/stream/my_track_abc123.mp3"
+    content_type: string;       // "audio/mpeg"
+    file_size_bytes: number;    // File size in bytes
+    composition_plan?: object;  // Returned composition plan (if available)
+    song_metadata?: object;     // Song metadata (if available)
+    request_id: string;         // Unique request ID
+    timestamp: string;          // ISO 8601 timestamp
   };
 }
 ```
 
-#### 3. Error Message (Server → Client)
+**Example:**
+```json
+{
+  "type": "result",
+  "data": {
+    "filename": "websocket_test_track_8fbdcf93.mp3",
+    "file_path": "/output/music/websocket_test_track_8fbdcf93.mp3",
+    "download_url": "/render/download/websocket_test_track_8fbdcf93.mp3",
+    "stream_url": "/render/stream/websocket_test_track_8fbdcf93.mp3",
+    "content_type": "audio/mpeg",
+    "file_size_bytes": 1440580,
+    "composition_plan": null,
+    "song_metadata": null,
+    "request_id": "8eab5bcb-1ad3-45b3-8cf8-727a26ca30e7",
+    "timestamp": "2026-01-27T22:04:51"
+  }
+}
+```
 
-Sent when an error occurs.
+### 3. Error Message (Server → Client)
+
+Sent when an error occurs during rendering.
 
 ```typescript
 interface ErrorMessage {
   type: "error";
-  error_code: "INVALID_REQUEST" | "VALIDATION_ERROR" | "SERVER_ERROR";
-  message: string;
-  timestamp: string;
+  error_code: string;  // Machine-readable code
+  message: string;     // Human-readable description
+  timestamp: string;   // ISO 8601 timestamp
 }
 ```
 
-#### 4. Render Request (Client → Server)
+**Error Codes:**
 
-Sent by the frontend to start rendering.
+| Code | Description |
+|------|-------------|
+| `INVALID_REQUEST` | Malformed request message |
+| `VALIDATION_ERROR` | Composition plan validation failed |
+| `SERVER_ERROR` | Unexpected error during rendering |
+
+**Example:**
+```json
+{
+  "type": "error",
+  "error_code": "VALIDATION_ERROR",
+  "message": "Composition plan must have at least one section. Total duration must be between 3000ms and 600000ms.",
+  "timestamp": "2026-01-27T22:05:00.000000"
+}
+```
+
+### 4. Render Request (Client → Server)
+
+Sent by the client to start rendering.
 
 ```typescript
-interface RenderWebSocketRequest {
+interface RenderRequest {
   type: "render";
   composition_plan: {
-    title?: string;
-    positive_global_styles: string[];
-    negative_global_styles: string[];
-    sections: Section[];
-  };
-}
-```
-
-## Implementation Guide
-
-### 1. Update Types (`src/types/index.ts`)
-
-Add WebSocket message types:
-
-```typescript
-// WebSocket message types
-export interface WSProgressMessage {
-  type: "progress";
-  stage: string;
-  progress_percent: number;
-  message: string;
-  timestamp: string;
-}
-
-export interface WSResultMessage {
-  type: "result";
-  data: AudioResult & {
-    file_path: string;
-    content_type: string;
-    composition_plan: object | null;
-    song_metadata: object | null;
-    request_id: string;
-    timestamp: string;
+    title?: string;                    // Optional title for output filename
+    positive_global_styles: string[];  // Styles to include globally
+    negative_global_styles: string[];  // Styles to avoid globally
+    sections: Section[];               // Array of sections
   };
 }
 
-export interface WSErrorMessage {
-  type: "error";
-  error_code: string;
-  message: string;
-  timestamp: string;
+interface Section {
+  section_name: string;
+  positive_local_styles: string[];
+  negative_local_styles: string[];
+  duration_ms: number;          // Minimum 3000ms per section
+  lines?: string[];             // Optional lyrics
+  source_from?: string | null;  // Optional source reference
 }
-
-export type WSMessage = WSProgressMessage | WSResultMessage | WSErrorMessage;
 ```
 
-### 2. Create WebSocket Service (`src/services/websocket.ts`)
+**Validation Rules:**
+- Must have at least one section
+- Total duration: 3,000ms - 600,000ms (3 seconds to 10 minutes)
+- Each section must be at least 3,000ms
+
+**Example:**
+```json
+{
+  "type": "render",
+  "composition_plan": {
+    "title": "My Epic Track",
+    "positive_global_styles": ["electronic pop", "uplifting", "122 bpm"],
+    "negative_global_styles": ["vocals", "slow", "dark"],
+    "sections": [
+      {
+        "section_name": "Intro",
+        "positive_local_styles": ["energetic", "synth lead"],
+        "negative_local_styles": ["sparse"],
+        "duration_ms": 5000,
+        "lines": []
+      },
+      {
+        "section_name": "Main",
+        "positive_local_styles": ["full energy", "driving beat"],
+        "negative_local_styles": ["ambient"],
+        "duration_ms": 10000,
+        "lines": []
+      }
+    ]
+  }
+}
+```
+
+## JavaScript Example
+
+```javascript
+function renderWithWebSocket(compositionPlan, onProgress, onResult, onError) {
+  const ws = new WebSocket('ws://localhost:8000/render/ws');
+
+  ws.onopen = () => {
+    console.log('Connected to render WebSocket');
+  };
+
+  ws.onmessage = (event) => {
+    const message = JSON.parse(event.data);
+
+    switch (message.type) {
+      case 'progress':
+        // Handle progress update
+        if (message.stage === 'connected') {
+          // Server is ready, send the render request
+          ws.send(JSON.stringify({
+            type: 'render',
+            composition_plan: compositionPlan
+          }));
+        } else {
+          onProgress?.(message.stage, message.progress_percent, message.message);
+        }
+        break;
+
+      case 'result':
+        // Render complete
+        onResult?.(message.data);
+        ws.close();
+        break;
+
+      case 'error':
+        // Handle error
+        onError?.(message.error_code, message.message);
+        ws.close();
+        break;
+    }
+  };
+
+  ws.onerror = (error) => {
+    console.error('WebSocket error:', error);
+    onError?.('CONNECTION_ERROR', 'WebSocket connection failed');
+  };
+
+  ws.onclose = () => {
+    console.log('WebSocket connection closed');
+  };
+
+  return ws;
+}
+
+// Usage
+const compositionPlan = {
+  title: "My Track",
+  positive_global_styles: ["electronic", "upbeat"],
+  negative_global_styles: ["slow"],
+  sections: [
+    {
+      section_name: "Main",
+      positive_local_styles: ["energetic"],
+      negative_local_styles: [],
+      duration_ms: 10000,
+      lines: []
+    }
+  ]
+};
+
+renderWithWebSocket(
+  compositionPlan,
+  (stage, percent, message) => {
+    console.log(`Progress: ${stage} (${percent}%) - ${message}`);
+    // Update progress bar UI
+  },
+  (result) => {
+    console.log('Render complete:', result.filename);
+    // Play audio using stream_url
+    const audio = new Audio(`http://localhost:8000${result.stream_url}`);
+    audio.play();
+  },
+  (code, message) => {
+    console.error(`Error [${code}]: ${message}`);
+    // Show error to user
+  }
+);
+```
+
+## React Hook Example
 
 ```typescript
-const WS_URL = "ws://localhost:8000/render/ws";
+import { useState, useCallback } from 'react';
 
-export interface RenderProgress {
+interface RenderProgress {
   stage: string;
   percent: number;
   message: string;
 }
 
-export async function renderWithWebSocket(
-  compositionPlan: CompositionPlanData,
-  onProgress: (progress: RenderProgress) => void
-): Promise<AudioResult> {
-  return new Promise((resolve, reject) => {
-    const ws = new WebSocket(WS_URL);
+interface RenderResult {
+  filename: string;
+  download_url: string;
+  stream_url: string;
+  file_size_bytes: number;
+}
 
-    ws.onopen = () => {
-      console.log("WebSocket connected");
-    };
+export function useWebSocketRender() {
+  const [isRendering, setIsRendering] = useState(false);
+  const [progress, setProgress] = useState<RenderProgress | null>(null);
+  const [result, setResult] = useState<RenderResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const render = useCallback((compositionPlan: any) => {
+    setIsRendering(true);
+    setProgress(null);
+    setResult(null);
+    setError(null);
+
+    const ws = new WebSocket('ws://localhost:8000/render/ws');
 
     ws.onmessage = (event) => {
       const message = JSON.parse(event.data);
 
       switch (message.type) {
-        case "progress":
-          onProgress({
-            stage: message.stage,
-            percent: message.progress_percent,
-            message: message.message,
-          });
-
-          // Send composition plan after receiving "connected" message
-          if (message.stage === "connected") {
+        case 'progress':
+          if (message.stage === 'connected') {
             ws.send(JSON.stringify({
-              type: "render",
-              composition_plan: compositionPlan,
+              type: 'render',
+              composition_plan: compositionPlan
             }));
           }
-          break;
-
-        case "result":
-          const data = message.data;
-          resolve({
-            url: `http://localhost:8000${data.stream_url}`,
-            filename: data.filename,
-            mimeType: data.content_type,
-            downloadUrl: `http://localhost:8000${data.download_url}`,
-            fileSizeBytes: data.file_size_bytes,
+          setProgress({
+            stage: message.stage,
+            percent: message.progress_percent,
+            message: message.message
           });
+          break;
+
+        case 'result':
+          setResult(message.data);
+          setIsRendering(false);
           ws.close();
           break;
 
-        case "error":
-          reject(new Error(`${message.error_code}: ${message.message}`));
+        case 'error':
+          setError(`${message.error_code}: ${message.message}`);
+          setIsRendering(false);
           ws.close();
           break;
       }
     };
 
-    ws.onerror = (error) => {
-      reject(new Error("WebSocket connection failed"));
+    ws.onerror = () => {
+      setError('WebSocket connection failed');
+      setIsRendering(false);
     };
+  }, []);
 
-    ws.onclose = (event) => {
-      if (!event.wasClean) {
-        reject(new Error("WebSocket connection closed unexpectedly"));
-      }
-    };
-  });
+  return { render, isRendering, progress, result, error };
 }
 ```
 
-### 3. Update Wizard Store (`src/state/wizardStore.ts`)
+## Audio Playback
 
-Add progress state:
+After receiving the result, use the URLs to play or download the audio:
 
-```typescript
-interface WizardState {
-  // ... existing state ...
+```javascript
+// Stream for playback (supports seeking)
+const streamUrl = `http://localhost:8000${result.stream_url}`;
 
-  // New progress state
-  renderProgress: {
-    stage: string;
-    percent: number;
-    message: string;
-  } | null;
-}
-
-interface WizardActions {
-  // ... existing actions ...
-
-  setRenderProgress: (progress: { stage: string; percent: number; message: string } | null) => void;
-}
-
-// In the store implementation:
-setRenderProgress: (progress) => set({ renderProgress: progress }),
+// Download the file
+const downloadUrl = `http://localhost:8000${result.download_url}`;
 ```
 
-### 4. Update Step2Editors Component
+The stream endpoint returns proper headers for browser audio playback:
+- `Content-Type: audio/mpeg`
+- `Content-Length: <file_size>`
+- `Accept-Ranges: bytes`
 
-Replace the REST API call with WebSocket:
+## Timing Expectations
 
-```typescript
-import { renderWithWebSocket } from "../services/websocket";
-
-// In the render handler:
-const handleRenderMusic = async () => {
-  setIsCreatingMusic(true);
-  setRenderProgress(null);
-
-  try {
-    const result = await renderWithWebSocket(
-      compositionPlanObject,
-      (progress) => {
-        setRenderProgress(progress);
-      }
-    );
-
-    setAudioResult(result);
-    nextStep();
-  } catch (error) {
-    console.error("Render failed:", error);
-    // Handle error
-  } finally {
-    setIsCreatingMusic(false);
-    setRenderProgress(null);
-  }
-};
-```
-
-### 5. Update Progress UI
-
-Replace the generic spinner with a progress indicator:
-
-```tsx
-{isCreatingMusic && renderProgress && (
-  <div className="flex flex-col items-center gap-4">
-    {/* Progress bar */}
-    <div className="w-full bg-gray-200 rounded-full h-2.5">
-      <div
-        className="bg-accent h-2.5 rounded-full transition-all duration-300"
-        style={{ width: `${renderProgress.percent}%` }}
-      />
-    </div>
-
-    {/* Progress text */}
-    <div className="text-center">
-      <p className="font-medium">{renderProgress.message}</p>
-      <p className="text-sm text-muted-foreground">
-        {renderProgress.percent}% complete
-      </p>
-    </div>
-  </div>
-)}
-```
-
-## Example: Complete Flow
-
-```typescript
-// User clicks "Render Music"
-
-// 1. Connect to WebSocket
-const ws = new WebSocket("ws://localhost:8000/render/ws");
-
-// 2. Receive: {"type": "progress", "stage": "connected", "progress_percent": 0, ...}
-//    → Show: "Ready to render"
-
-// 3. Send composition plan
-ws.send(JSON.stringify({
-  type: "render",
-  composition_plan: { title: "My Song", sections: [...] }
-}));
-
-// 4. Receive progress updates
-//    → {"type": "progress", "stage": "validating", "progress_percent": 5, ...}
-//    → {"type": "progress", "stage": "validated", "progress_percent": 10, ...}
-//    → {"type": "progress", "stage": "generating", "progress_percent": 15, ...}
-//    → {"type": "progress", "stage": "processing", "progress_percent": 70, ...}
-//    → {"type": "progress", "stage": "saving", "progress_percent": 85, ...}
-//    → {"type": "progress", "stage": "extracting", "progress_percent": 95, ...}
-//    → {"type": "progress", "stage": "complete", "progress_percent": 100, ...}
-
-// 5. Receive result
-//    → {"type": "result", "data": { filename: "...", stream_url: "...", ... }}
-
-// 6. Navigate to Step 3 with audio player
-```
-
-## Fallback Strategy
-
-Keep the existing REST API call as a fallback:
-
-```typescript
-async function renderMusic(compositionPlan: CompositionPlanData, onProgress?: (p: RenderProgress) => void) {
-  // Try WebSocket first
-  if (onProgress && "WebSocket" in window) {
-    try {
-      return await renderWithWebSocket(compositionPlan, onProgress);
-    } catch (wsError) {
-      console.warn("WebSocket render failed, falling back to REST:", wsError);
-    }
-  }
-
-  // Fallback to REST API
-  return await createMusicFromPlan(compositionPlan);
-}
-```
-
-## Testing
-
-1. Start the backend: `uvicorn main:app --reload`
-2. Open browser DevTools → Network → WS tab
-3. Trigger a render and observe WebSocket messages
-4. Verify progress updates appear in the UI
-
-## Error Handling
-
-Handle these error scenarios:
-
-| Error Code | Cause | User Action |
-|------------|-------|-------------|
-| `INVALID_REQUEST` | Malformed JSON or missing fields | Fix request format |
-| `VALIDATION_ERROR` | Invalid composition plan | Check sections, durations |
-| `SERVER_ERROR` | ElevenLabs API or server issue | Retry or contact support |
-
-```typescript
-ws.onmessage = (event) => {
-  const msg = JSON.parse(event.data);
-  if (msg.type === "error") {
-    switch (msg.error_code) {
-      case "VALIDATION_ERROR":
-        toast.error(`Validation failed: ${msg.message}`);
-        break;
-      case "SERVER_ERROR":
-        toast.error("Server error. Please try again.");
-        break;
-      default:
-        toast.error(msg.message);
-    }
-  }
-};
-```
+The ElevenLabs API call (the `generating` stage at 15%) is the longest operation and typically takes 10-30 seconds depending on composition length. The other stages complete quickly.

@@ -19,6 +19,7 @@ import asyncio
 import json
 import sys
 from datetime import datetime
+from pathlib import Path
 
 try:
     import websockets
@@ -26,6 +27,13 @@ except ImportError:
     print("Error: websockets library not installed.")
     print("Install with: pip install websockets")
     sys.exit(1)
+
+
+def load_sample_composition_plan():
+    """Load the sample composition plan from prompts/sample_comp_plan.json."""
+    sample_path = Path(__file__).parent.parent / "prompts" / "sample_comp_plan.json"
+    with open(sample_path) as f:
+        return json.load(f)
 
 
 def timestamp():
@@ -37,23 +45,13 @@ async def test_websocket_render():
     """Test the WebSocket render endpoint with a simple composition plan."""
     uri = "ws://localhost:8000/render/ws"
 
-    # Simple test composition plan
+    # Load composition plan from sample file
+    composition_plan = load_sample_composition_plan()
+    composition_plan["title"] = "WebSocket Test Track"
+
     request = {
         "type": "render",
-        "composition_plan": {
-            "title": "WebSocket Test Track",
-            "positive_global_styles": ["ambient", "relaxing", "soft piano"],
-            "negative_global_styles": ["aggressive", "loud"],
-            "sections": [
-                {
-                    "section_name": "Intro",
-                    "positive_local_styles": ["soft pads", "gentle melody"],
-                    "negative_local_styles": ["drums", "bass"],
-                    "duration_ms": 90000,
-                    "lines": []
-                }
-            ]
-        }
+        "composition_plan": composition_plan
     }
 
     print(f"Connecting to {uri}...")

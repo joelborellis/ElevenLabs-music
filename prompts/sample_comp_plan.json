@@ -40,7 +40,7 @@
         "ambient",
         "sparse"
       ],
-      "duration_ms": 3000,
+      "duration_ms": 10000,
       "lines": [],
       "source_from": null
     },
@@ -59,7 +59,7 @@
         "vocals",
         "melody disappears"
       ],
-      "duration_ms": 3000,
+      "duration_ms": 30000,
       "lines": [],
       "source_from": null
     },
@@ -80,7 +80,7 @@
         "anticlimactic",
         "lingering sounds"
       ],
-      "duration_ms": 4000,
+      "duration_ms": 10000,
       "lines": [],
       "source_from": null
     }

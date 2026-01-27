@@ -221,9 +221,20 @@ Client                                    Server
    |<-- {"type":"progress","stage":"generating","progress_percent":15,...}
    |                                         |
    |            (ElevenLabs API call)        |
+   |      Progress updates every 2 seconds   |
+   |                                         |
+   |<-- {"type":"progress","stage":"generating","progress_percent":20,...}
+   |<-- {"type":"progress","stage":"generating","progress_percent":25,...}
+   |<-- ...                                  |
+   |<-- {"type":"progress","stage":"generating","progress_percent":65,...}
+   |                                         |
+   |            (API call completes)         |
+   |      Progress updates every 0.5 seconds |
    |                                         |
    |<-- {"type":"progress","stage":"processing","progress_percent":70,...}
-   |<-- {"type":"progress","stage":"saving","progress_percent":85,...}
+   |<-- {"type":"progress","stage":"processing","progress_percent":75,...}
+   |<-- {"type":"progress","stage":"saving","progress_percent":80,...}
+   |<-- ...                                  |
    |<-- {"type":"progress","stage":"extracting","progress_percent":95,...}
    |<-- {"type":"progress","stage":"complete","progress_percent":100,...}
    |                                         |
@@ -296,16 +307,26 @@ Sent multiple times during rendering to update progress:
 
 **Progress Stages (in order):**
 
-| Stage | Percent | Message |
-|-------|---------|---------|
-| `connected` | 0 | "Connected. Send composition plan to begin rendering." |
-| `validating` | 5 | "Validating composition plan..." |
-| `validated` | 10 | "Composition plan validated successfully" |
-| `generating` | 15 | "Starting music generation with ElevenLabs API..." |
-| `processing` | 70 | "API call complete, processing response..." |
-| `saving` | 85 | "Saving audio file to disk..." |
-| `extracting` | 95 | "Extracting metadata..." |
-| `complete` | 100 | "Render complete!" |
+| Stage | Percent Range | Interval | Description |
+|-------|---------------|----------|-------------|
+| `connected` | 0% | instant | Connection established, waiting for request |
+| `validating` | 5% | instant | Validating composition plan structure |
+| `validated` | 10% | instant | Validation complete |
+| `generating` | 15% → 65% | 2 seconds | ElevenLabs API call in progress (simulated progress) |
+| `processing` | 70% → 75% | 0.5 seconds | Processing API response |
+| `saving` | 80% → 90% | 0.5 seconds | Saving audio file to disk |
+| `extracting` | 95% | 0.5 seconds | Extracting metadata |
+| `complete` | 100% | instant | Render complete |
+
+**Smooth Progress Behavior:**
+
+The WebSocket endpoint provides smooth, gradual progress updates throughout the entire rendering process:
+
+1. **Validation phase (0% → 15%)**: Instant updates for quick validation steps
+2. **Generation phase (15% → 65%)**: Simulated progress updates every **2 seconds** while waiting for the ElevenLabs API. Since the API doesn't provide streaming progress, updates are simulated to keep the UI responsive.
+3. **Post-processing phase (65% → 100%)**: Gradual updates every **0.5 seconds** through processing, saving, and metadata extraction stages.
+
+This ensures users see continuous progress feedback rather than long periods of no updates followed by sudden jumps.
 
 **2. Result Message (on success)**
 

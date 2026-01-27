@@ -22,6 +22,49 @@ logger = logging.getLogger(__name__)
 ProgressCallback = Callable[[str, int, str], Awaitable[None]]
 
 
+def _validate_composition_plan(composition_plan: dict) -> tuple[list, int]:
+    """
+    Validate a composition plan and return sections and total duration.
+
+    Args:
+        composition_plan: The composition plan dictionary
+
+    Returns:
+        Tuple of (sections list, total_duration_ms)
+
+    Raises:
+        ValueError: If the composition plan is invalid
+    """
+    sections = composition_plan.get('sections', [])
+    if not sections:
+        raise ValueError(
+            "Composition plan must have at least one section. "
+            "Total duration must be between 3000ms and 600000ms."
+        )
+
+    total_duration_ms = sum(s.get('duration_ms', 0) for s in sections)
+    if total_duration_ms < 3000:
+        raise ValueError(
+            f"Composition plan total duration ({total_duration_ms}ms) is too short. "
+            "Minimum duration is 3000ms."
+        )
+    if total_duration_ms > 600000:
+        raise ValueError(
+            f"Composition plan total duration ({total_duration_ms}ms) is too long. "
+            "Maximum duration is 600000ms (10 minutes)."
+        )
+
+    for i, section in enumerate(sections):
+        section_duration = section.get('duration_ms', 0)
+        if section_duration < 3000:
+            raise ValueError(
+                f"Section '{section.get('section_name', i)}' duration ({section_duration}ms) "
+                "is too short. Each section must be at least 3000ms."
+            )
+
+    return sections, total_duration_ms
+
+
 def _sanitize_filename(title: str) -> str:
     """Convert title to a safe filename."""
     # Convert to lowercase, replace spaces with underscores
@@ -81,36 +124,9 @@ class RenderService:
             Exception: If rendering fails
         """
         logger.info("Starting music render with ElevenLabs API")
-        
+
         # Validate composition plan
-        sections = composition_plan.get('sections', [])
-        if not sections:
-            raise ValueError(
-                "Composition plan must have at least one section. "
-                "Total duration must be between 3000ms and 600000ms."
-            )
-        
-        total_duration_ms = sum(s.get('duration_ms', 0) for s in sections)
-        if total_duration_ms < 3000:
-            raise ValueError(
-                f"Composition plan total duration ({total_duration_ms}ms) is too short. "
-                "Minimum duration is 3000ms."
-            )
-        if total_duration_ms > 600000:
-            raise ValueError(
-                f"Composition plan total duration ({total_duration_ms}ms) is too long. "
-                "Maximum duration is 600000ms (10 minutes)."
-            )
-        
-        # Validate individual section durations (each must be >= 3000ms)
-        for i, section in enumerate(sections):
-            section_duration = section.get('duration_ms', 0)
-            if section_duration < 3000:
-                raise ValueError(
-                    f"Section '{section.get('section_name', i)}' duration ({section_duration}ms) "
-                    "is too short. Each section must be at least 3000ms."
-                )
-        
+        sections, total_duration_ms = _validate_composition_plan(composition_plan)
         logger.debug(f"Composition plan sections: {len(sections)}, total duration: {total_duration_ms}ms")
         
         # Call ElevenLabs compose_detailed API
@@ -196,97 +212,49 @@ class RenderService:
 
         # Stage 1: Validation
         await progress_callback("validating", 5, "Validating composition plan...")
+        sections, total_duration_ms = _validate_composition_plan(composition_plan)
+        await progress_callback("validated", 10, "Composition plan validated")
 
-        sections = composition_plan.get('sections', [])
-        if not sections:
-            raise ValueError(
-                "Composition plan must have at least one section. "
-                "Total duration must be between 3000ms and 600000ms."
-            )
+        # Stage 2: API Call with simulated progress
+        await progress_callback("generating", 15, "Generating music with ElevenLabs API...")
 
-        total_duration_ms = sum(s.get('duration_ms', 0) for s in sections)
-        if total_duration_ms < 3000:
-            raise ValueError(
-                f"Composition plan total duration ({total_duration_ms}ms) is too short. "
-                "Minimum duration is 3000ms."
+        # Run API call in thread pool as a task
+        api_task = asyncio.create_task(
+            asyncio.to_thread(
+                self.client.music.compose_detailed,
+                composition_plan=composition_plan
             )
-        if total_duration_ms > 600000:
-            raise ValueError(
-                f"Composition plan total duration ({total_duration_ms}ms) is too long. "
-                "Maximum duration is 600000ms (10 minutes)."
-            )
+        )
 
-        for i, section in enumerate(sections):
-            section_duration = section.get('duration_ms', 0)
-            if section_duration < 3000:
-                raise ValueError(
-                    f"Section '{section.get('section_name', i)}' duration ({section_duration}ms) "
-                    "is too short. Each section must be at least 3000ms."
+        # Simulated progress: increment every 2 seconds until API completes
+        current_progress = 20
+        while not api_task.done():
+            await asyncio.sleep(2.0)
+            if not api_task.done() and current_progress < 65:
+                current_progress += 5
+                await progress_callback(
+                    "generating",
+                    current_progress,
+                    "Generating music..."
                 )
 
-        await progress_callback("validated", 10, "Composition plan validated successfully")
-
-        # Stage 2: API Call (the longest operation)
-        await progress_callback("generating", 15, "Starting music generation with ElevenLabs API...")
-
-        # Run blocking API call in thread pool to not block the event loop
-        def blocking_api_call():
-            return self.client.music.compose_detailed(composition_plan=composition_plan)
-
-        # Create a task for the API call that runs in a thread pool
-        api_task = asyncio.create_task(asyncio.to_thread(blocking_api_call))
-
-        # Create a separate task to send simulated progress updates
-        async def send_simulated_progress():
-            simulated_progress = 20
-            progress_messages = [
-                "Analyzing composition structure...",
-                "Generating musical elements...",
-                "Synthesizing audio layers...",
-                "Mixing tracks...",
-                "Applying effects...",
-                "Finalizing generation...",
-            ]
-            message_index = 0
-
-            # Wait intervals: start fast, then slow down
-            intervals = [1.0, 1.5, 2.0, 2.0, 2.5, 3.0, 3.0, 3.0]
-
-            for interval in intervals:
-                await asyncio.sleep(interval)
-
-                # Stop if the API task is done
-                if api_task.done():
-                    break
-
-                if simulated_progress <= 65:
-                    message = progress_messages[message_index % len(progress_messages)]
-                    logger.info(f"Sending simulated progress: {simulated_progress}% - {message}")
-                    await progress_callback("generating", simulated_progress, message)
-                    simulated_progress += 7
-                    message_index += 1
-
-        # Start the progress task
-        progress_task = asyncio.create_task(send_simulated_progress())
-
-        # Wait for the API task to complete
-        try:
-            track_details = await api_task
-        finally:
-            # Cancel the progress task if it's still running
-            progress_task.cancel()
-            try:
-                await progress_task
-            except asyncio.CancelledError:
-                pass
-
+        track_details = await api_task
         logger.info("ElevenLabs API call completed")
-
-        await progress_callback("processing", 70, "API call complete, processing response...")
-
         logger.info(f"Render complete. Filename: {track_details.filename}")
 
-        # Stage 3: Determine filename
+        # Continue gradual progress through post-processing stages
+        # Use shorter intervals since actual work is fast
+        async def increment_to(target: int, stage: str, message: str):
+            nonlocal current_progress
+            while current_progress < target:
+                current_progress += 5
+                await progress_callback(stage, current_progress, message)
+                await asyncio.sleep(0.5)
+
+        # Stage 3: Processing response (progress to 75%)
+        await increment_to(75, "processing", "Processing response...")
+
+        # Stage 4: Determine filename
         if title:
             output_filename = _sanitize_filename(title)
             logger.info(f"Using title-based filename: {output_filename}")
@@ -294,8 +262,8 @@ class RenderService:
             output_filename = track_details.filename
             logger.info(f"Using ElevenLabs filename: {output_filename}")
 
-        # Stage 4: Save file
-        await progress_callback("saving", 85, "Saving audio file to disk...")
+        # Stage 5: Save file (progress to 90%)
+        await increment_to(90, "saving", "Saving audio file...")
 
         output_path = self.output_dir / output_filename
         with open(output_path, "wb") as f:
@@ -304,8 +272,8 @@ class RenderService:
         file_size = output_path.stat().st_size
         logger.info(f"Saved audio to: {output_path} ({file_size} bytes)")
 
-        # Stage 5: Extract metadata
-        await progress_callback("extracting", 95, "Extracting metadata...")
+        # Stage 6: Extract metadata (progress to 95%)
+        await increment_to(95, "extracting", "Extracting metadata...")
 
         json_data = track_details.json if hasattr(track_details, 'json') else None
         composition_plan_result = None
@@ -315,6 +283,7 @@ class RenderService:
             composition_plan_result = json_data.get('composition_plan')
             song_metadata = json_data.get('song_metadata')
 
+        # Final progress to 100%
         await progress_callback("complete", 100, "Render complete!")
 
         return RenderResult(

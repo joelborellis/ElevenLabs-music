@@ -11,7 +11,7 @@ from typing import Optional
 from dotenv import load_dotenv
 load_dotenv()
 
-from agents import Agent, Runner
+from agents import Agent, Runner, WebSearchTool, ToolCallItem, ToolCallOutputItem
 
 from models.prompt import (
     PromptGenerationRequest,
@@ -90,9 +90,10 @@ class PromptGeneratorService:
                 model="gpt-5.2",
                 name="prompt_generator_agent",
                 instructions=self.instructions,
+                tools=[WebSearchTool()],
                 output_type=AgentPromptOutput,  # Agent outputs structured prompt with title and description
             )
-            logger.info("Created OpenAI Agent for prompt generation")
+            logger.info("Created OpenAI Agent for prompt generation with WebSearchTool")
         
         return self._agent
     
@@ -132,7 +133,16 @@ class PromptGeneratorService:
                 self.agent,
                 user_message,
             )
-            
+
+            # Log any tool calls (e.g., WebSearchTool)
+            for item in result.new_items:
+                if isinstance(item, ToolCallItem):
+                    logger.info(f"Tool called: {item.raw_item.type if hasattr(item.raw_item, 'type') else 'unknown'}")
+                    logger.info(f"Tool call details: {item.raw_item}")
+                elif isinstance(item, ToolCallOutputItem):
+                    output_preview = str(item.output)[:500] if item.output else "No output"
+                    logger.info(f"Tool output (truncated): {output_preview}")
+
             generated_output = result.final_output
             
             if not generated_output or not isinstance(generated_output, AgentPromptOutput):

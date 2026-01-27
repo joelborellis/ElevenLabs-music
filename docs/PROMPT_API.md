@@ -63,6 +63,7 @@ Generates a music prompt based on three preset selections using an AI agent with
 
 - **user_narrative** (optional, default: null): Freeform story, occasion, or people details to guide lyrics and vocal tone. When provided, the generated prompt will incorporate these details to shape lyrical content, vocal tone, and overall emotional intent.
   - Example: `"A love song for my wife Sarah on our 10th wedding anniversary. We met at a coffee shop in Seattle and she loves rainy days and acoustic guitar."`
+  - **URL Support**: Can include URLs (http:// or https://) - the agent will automatically fetch and incorporate content from those URLs. See [Web Search Feature](#web-search-feature) below.
 
 ### Response
 
@@ -195,6 +196,99 @@ print(f"Title: {result['title']}")
 print(f"Description: {result['description']}")
 print(f"Generated prompt:\n{result['prompt']}")
 ```
+
+#### Using cURL (with URL in user narrative)
+
+```bash
+curl -X POST http://localhost:8000/prompt \
+  -H "Content-Type: application/json" \
+  -d '{
+    "project_blueprint": "standalone_song_mini",
+    "sound_profile": "indie_live_band",
+    "delivery_and_control": "balanced_studio",
+    "instrumental_only": false,
+    "user_narrative": "Create a song inspired by this article about our company journey: https://example.com/our-story"
+  }'
+```
+
+---
+
+## Web Search Feature
+
+The prompt generation agent has access to OpenAI's built-in **WebSearchTool**, enabling it to fetch and incorporate content from URLs included in the `user_narrative`.
+
+### How It Works
+
+1. **URL Detection**: When the agent detects URLs (http:// or https://) in the `user_narrative`, it automatically uses web search to retrieve relevant content.
+
+2. **Content Extraction**: The agent extracts music-relevant information from the fetched content:
+   - Themes, stories, and emotional tone
+   - Names of people, places, or events
+   - Brand voice or messaging (for product/company pages)
+   - Event details (date, occasion, participants)
+   - Mood or atmosphere descriptions
+
+3. **Natural Integration**: The extracted information is woven into the music prompt as if the user had written it directly.
+
+### Supported URL Types
+
+| URL Type | What Gets Extracted |
+|----------|---------------------|
+| Article/Blog | Story, theme, emotional arc |
+| Product/Company page | Brand personality, target audience, key messaging |
+| Event page | Occasion details, mood, participants |
+| Social media post | Narrative or story being shared |
+| News article | Subject matter, tone, key facts |
+
+### Example Use Cases
+
+**Company anthem from About page:**
+```json
+{
+  "project_blueprint": "standalone_song_mini",
+  "sound_profile": "bright_pop_electro",
+  "delivery_and_control": "balanced_studio",
+  "user_narrative": "Create an uplifting company anthem based on our mission: https://example.com/about-us"
+}
+```
+
+**Event music from invitation:**
+```json
+{
+  "project_blueprint": "standalone_song_mini",
+  "sound_profile": "indie_live_band",
+  "delivery_and_control": "balanced_studio",
+  "user_narrative": "Music for our wedding based on our story here: https://ourwedding.com/our-story"
+}
+```
+
+**Product jingle from landing page:**
+```json
+{
+  "project_blueprint": "ad_brand_fast_hook",
+  "sound_profile": "bright_pop_electro",
+  "delivery_and_control": "balanced_studio",
+  "user_narrative": "Create a catchy jingle for this product: https://example.com/product/awesome-gadget"
+}
+```
+
+### Combining URLs with Text
+
+You can combine URLs with additional context:
+
+```json
+{
+  "user_narrative": "A celebration song for our startup's 5th anniversary. Here's our journey: https://blog.startup.com/five-years. The mood should be triumphant but also grateful to our early supporters."
+}
+```
+
+### Limitations
+
+- **Inaccessible URLs**: If a URL cannot be fetched (404, blocked, etc.), the agent proceeds with whatever text context is available in the narrative.
+- **Private content**: URLs requiring authentication (login-protected pages) cannot be accessed.
+- **Rate limits**: Excessive URL fetching may be subject to rate limits.
+
+---
 
 ## Features
 
