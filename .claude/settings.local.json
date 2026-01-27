@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Skill(skill-detection-test)"
+      "Skill(skill-detection-test)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

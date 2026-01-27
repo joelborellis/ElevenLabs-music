@@ -272,9 +272,57 @@ def test_download_not_found():
         return False
 
 
+def test_render_endpoint_with_title():
+    """Test the /render endpoint with a title for custom filename."""
+
+    url = f"{BASE_URL}/render"
+
+    payload = {
+        "title": "Epic Battle Theme",  # <-- New title field
+        "positive_global_styles": ["epic", "cinematic", "orchestral"],
+        "negative_global_styles": ["lo-fi", "ambient"],
+        "sections": [
+            {
+                "section_name": "Intro",
+                "positive_local_styles": ["building tension", "strings"],
+                "negative_local_styles": ["percussion"],
+                "duration_ms": 5000,
+                "lines": [],
+                "source_from": None
+            }
+        ]
+    }
+
+    print(f"\nTesting POST {url} with title")
+    print(f"Payload: {json.dumps(payload, indent=2)}")
+    print("-" * 50)
+
+    try:
+        response = requests.post(url, json=payload, timeout=120)
+        response.raise_for_status()
+
+        result = response.json()
+        print(f"Status: {response.status_code}")
+        print(f"Response:\n{json.dumps(result, indent=2)}")
+
+        # Verify filename contains the title
+        assert "epic_battle_theme" in result["filename"].lower(), \
+            f"Filename should contain title: {result['filename']}"
+
+        print("\nTest with title passed!")
+        return result
+
+    except requests.exceptions.ConnectionError:
+        print("Error: Could not connect to server.")
+        return None
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+
 def test_render_validation():
     """Test the /render endpoint with invalid input."""
-    
+
     url = f"{BASE_URL}/render"
     
     # Test with empty sections - should return 422
@@ -308,14 +356,17 @@ def test_render_validation():
 
 def run_all_tests():
     """Run all render endpoint tests."""
-    
+
     print("=" * 60)
     print("RENDER ENDPOINT TESTS")
     print("=" * 60)
-    
+
     # Test 404 handling first (quick test)
     test_download_not_found()
-    
+
+    # Test render with title (custom filename)
+    test_render_endpoint_with_title()
+
     # Test the main render endpoint
     result = test_render_endpoint()
     

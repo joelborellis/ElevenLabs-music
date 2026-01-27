@@ -68,4 +68,3 @@ async def test_service_directly():
 if __name__ == "__main__":
     result = asyncio.run(test_service_directly())   
     sys.exit(0 if result else 1)
-   

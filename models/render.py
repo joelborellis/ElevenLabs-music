@@ -10,7 +10,11 @@ from models.plan import Section
 
 class RenderRequest(BaseModel):
     """Request model for rendering music from a composition plan."""
-    
+
+    title: Optional[str] = Field(
+        default=None,
+        description="Optional title for the output file (from /prompt response). If provided, used to name the output file."
+    )
     positive_global_styles: list[str] = Field(
         default_factory=list,
         description="Global style descriptors to include in the composition"
@@ -28,6 +32,7 @@ class RenderRequest(BaseModel):
         "json_schema_extra": {
             "examples": [
                 {
+                    "title": "Bright Pop Anthem",
                     "positive_global_styles": [
                         "indie pop",
                         "indie rock",
@@ -74,6 +79,10 @@ class RenderResponse(BaseModel):
     download_url: str = Field(
         ...,
         description="URL to download the generated audio file"
+    )
+    stream_url: Optional[str] = Field(
+        default=None,
+        description="URL to stream the generated audio file for playback"
     )
     content_type: str = Field(
         default="audio/mpeg",

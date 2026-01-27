@@ -3,14 +3,16 @@ API routes for music rendering.
 """
 
 import logging
+import uuid
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Request, status, HTTPException
+from fastapi import APIRouter, Request, status, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, StreamingResponse
 from opentelemetry import trace
 
 from models.render import RenderRequest, RenderResponse
+from models.websocket import ProgressMessage, ResultMessage, ErrorMessage, RenderWebSocketRequest
 from services.render_service import get_render_service
 
 
@@ -100,11 +102,12 @@ async def render_music(
             )
             
             # Convert request to dict for the ElevenLabs API
-            composition_plan = request_data.model_dump()
-            
+            # Exclude title from composition_plan as it's only used for filename
+            composition_plan = request_data.model_dump(exclude={"title"})
+
             # Get the render service and render the music
             render_service = get_render_service()
-            result = render_service.render(composition_plan)
+            result = render_service.render(composition_plan, title=request_data.title)
             
             span.set_attribute("filename", result.filename)
             span.set_attribute("file_size_bytes", result.file_size_bytes)
@@ -243,3 +246,150 @@ async def stream_audio(filename: str):
             "Content-Disposition": f"inline; filename={filename}",
         }
     )
+
+
+@router.websocket("/ws")
+async def render_websocket(websocket: WebSocket):
+    """
+    WebSocket endpoint for music rendering with real-time progress updates.
+
+    Protocol:
+    1. Client connects to /render/ws
+    2. Server sends: {"type": "progress", "stage": "connected", "progress_percent": 0, ...}
+    3. Client sends: {"type": "render", "composition_plan": {...}}
+    4. Server sends progress updates as rendering proceeds
+    5. Server sends final result: {"type": "result", "data": {...}}
+    6. Connection closes
+
+    Progress Stages:
+    - connected (0%): WebSocket connection established
+    - validating (5%): Validating composition plan
+    - validated (10%): Validation complete
+    - generating (15%): Starting ElevenLabs API call
+    - processing (70%): API call complete, processing response
+    - saving (85%): Saving audio file to disk
+    - extracting (95%): Extracting metadata
+    - complete (100%): All done
+
+    Error Codes:
+    - INVALID_REQUEST: Malformed request message
+    - VALIDATION_ERROR: Composition plan validation failed
+    - SERVER_ERROR: Unexpected error during rendering
+    """
+    await websocket.accept()
+    request_id = str(uuid.uuid4())
+
+    logger.info(f"WebSocket connection accepted - request_id={request_id}")
+
+    # Send connected message
+    await websocket.send_json(
+        ProgressMessage(
+            stage="connected",
+            progress_percent=0,
+            message="Connected. Send composition plan to begin rendering."
+        ).model_dump()
+    )
+
+    try:
+        # Wait for composition plan from client
+        data = await websocket.receive_json()
+
+        # Parse and validate the request
+        try:
+            ws_request = RenderWebSocketRequest(**data)
+        except Exception as e:
+            logger.warning(f"Invalid WebSocket request - request_id={request_id}, error={str(e)}")
+            await websocket.send_json(
+                ErrorMessage(
+                    error_code="INVALID_REQUEST",
+                    message=f"Invalid request format: {str(e)}"
+                ).model_dump()
+            )
+            await websocket.close()
+            return
+
+        # Extract composition plan data
+        composition_plan = ws_request.composition_plan.model_dump(exclude={"title"})
+        title = ws_request.composition_plan.title
+
+        logger.info(
+            f"WebSocket render starting - request_id={request_id}, "
+            f"sections={len(composition_plan.get('sections', []))}"
+        )
+
+        # Define progress callback that sends WebSocket messages
+        async def send_progress(stage: str, percent: int, message: str):
+            await websocket.send_json(
+                ProgressMessage(
+                    stage=stage,
+                    progress_percent=percent,
+                    message=message
+                ).model_dump()
+            )
+
+        # Get render service and execute with progress
+        render_service = get_render_service()
+
+        result = await render_service.render_with_progress(
+            composition_plan=composition_plan,
+            title=title,
+            progress_callback=send_progress
+        )
+
+        # Build and send final response
+        response = RenderResponse(
+            filename=result.filename,
+            file_path=result.file_path,
+            download_url=f"/render/download/{result.filename}",
+            stream_url=f"/render/stream/{result.filename}",
+            content_type="audio/mpeg",
+            file_size_bytes=result.file_size_bytes,
+            composition_plan=result.composition_plan,
+            song_metadata=result.song_metadata,
+            request_id=request_id,
+            timestamp=datetime.utcnow().isoformat(),
+        )
+
+        await websocket.send_json(
+            ResultMessage(data=response.model_dump()).model_dump()
+        )
+
+        logger.info(
+            f"WebSocket render complete - request_id={request_id}, "
+            f"filename={result.filename}, size={result.file_size_bytes}"
+        )
+
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket disconnected by client - request_id={request_id}")
+    except ValueError as e:
+        # Validation errors
+        logger.warning(f"WebSocket validation error - request_id={request_id}, error={str(e)}")
+        try:
+            await websocket.send_json(
+                ErrorMessage(
+                    error_code="VALIDATION_ERROR",
+                    message=str(e)
+                ).model_dump()
+            )
+        except Exception:
+            pass  # Connection may already be closed
+    except Exception as e:
+        # Server errors
+        logger.error(
+            f"WebSocket error - request_id={request_id}, error={str(e)}",
+            exc_info=True
+        )
+        try:
+            await websocket.send_json(
+                ErrorMessage(
+                    error_code="SERVER_ERROR",
+                    message=f"Music rendering failed: {str(e)}"
+                ).model_dump()
+            )
+        except Exception:
+            pass  # Connection may already be closed
+    finally:
+        try:
+            await websocket.close()
+        except Exception:
+            pass  # Already closed
