@@ -41,10 +41,10 @@ These mappings are the source of truth. Expand the three IDs into musical intent
 - duration: 30 seconds
 - looping_behavior: Stinger ending (button ending)
 - structure_template: Ad Hook Format (hook immediately; fast build; button ending)
-- vocal_mode: Voiceover-friendly (no sung lyrics)
-- lyrics_plan: Brand-safe CTA (treated as voiceover copy intent, not sung lyrics)
+- vocal_mode: Flexible (instrumental with voiceover space OR catchy sung jingle)
+- lyrics_plan: Brand-safe; when vocals enabled, write short memorable jingle lyrics (1-2 catchy phrases/taglines that stick in the listener's head—think earworm hooks); when instrumental, leave midrange open for voiceover
 - lyric_language: English
-- vocal_timing_cue: Immediate (voiceover begins at 0s)
+- vocal_timing_cue: Flexible (jingle hook at ~3-8s after brief musical intro, or immediate if voiceover-style)
 
 ### `podcast_voiceover_loop`
 - use_case_intent: Podcast / Voiceover Bed
@@ -203,9 +203,10 @@ Note: You still output ONE prompt. When `isolation_stems` is selected, you shoul
 - If `instrumental_only == true`, force **“instrumental only”** and remove any sung-lyrics references.
 
 2) **Project Blueprint vocal_mode is authoritative unless overridden**
-- If blueprint says “Instrumental only”: treat all vocal settings as inactive.
-- If blueprint says “Voiceover-friendly”: no sung lyrics; keep midrange uncluttered; leave space for VO.
-- If blueprint says “Sung lyrics”: enable vocal_character, lyrics_plan, language, and timing cue.
+- If blueprint says "Instrumental only": treat all vocal settings as inactive.
+- If blueprint says "Voiceover-friendly": no sung lyrics; keep midrange uncluttered; leave space for VO.
+- If blueprint says "Sung lyrics": enable vocal_character, lyrics_plan, language, and timing cue.
+- If blueprint says "Flexible": check `instrumental_only` flag—if true, produce instrumental with voiceover space; if false or absent, produce catchy sung jingle with short, memorable hook lyrics (earworm taglines).
 
 3) **Lead focus adjustment when vocals are off**
 If vocals are disabled but sound profile implies vocal lead, convert:
@@ -233,7 +234,10 @@ If vocals are disabled but sound profile implies vocal lead, convert:
   - Use the narrative as the main storyline and emotional point of view for *original* lyrics.
   - Ensure lyrics explicitly reference the provided names and the occasion/event (if present).
   - Let the narrative influence vocal tone (tender, celebratory, apologetic, triumphant, etc.) while staying consistent with the chosen Sound Profile.
-  - If the narrative implies a specific perspective (e.g., “I”, “we”, “to you”), match it; otherwise choose a coherent perspective and keep it consistent.
+  - If the narrative implies a specific perspective (e.g., "I", "we", "to you"), match it; otherwise choose a coherent perspective and keep it consistent.
+- If the blueprint is Flexible (ad jingle mode with optional vocals):
+  - When vocals are enabled: distill the narrative into a punchy, memorable jingle hook—short taglines or catchy phrases (think "I'm lovin' it" brevity). Reference brand names, product names, or key message from the narrative. Keep it singable and sticky.
+  - When instrumental: use the narrative to inform the musical energy and leave space for voiceover; optionally suggest a short voiceover script line.
 - If the blueprint is Voiceover-friendly (no sung lyrics):
   - Do NOT request sung lyrics.
   - Use the narrative to shape the voiceover message and emotional delivery.
