@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Genspark is a harness. Microsoft is the foundation. — ai.expected</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --substrate:#0E1217;--substrate-2:#141A21;
+    --paper:#ECEBE4;--paper-2:#E3E2D9;
+    --ink:#15181E;--ink-soft:#454A52;--mist:#8A8F8A;
+    --signal:#3D2EF2;--signal-bright:#6A5BFF;--ember:#FF5C35;
+    --line-dark:rgba(255,255,255,.12);--line-light:rgba(21,24,30,.14);
+    --maxw:1080px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--paper);color:var(--ink);font-family:"Instrument Sans",system-ui,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+  .mono{font-family:"IBM Plex Mono",monospace;font-size:.7rem;letter-spacing:.18em;text-transform:uppercase}
+
+  /* top bar */
+  .topbar{border-bottom:1px solid var(--line-light);padding:18px 0}
+  .topbar .wrap{display:flex;justify-content:space-between;align-items:baseline}
+  .wordmark{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:1.05rem;letter-spacing:-.02em}
+  .wordmark .dot{color:var(--signal)}
+  .topbar .tag{color:var(--mist)}
+
+  /* hero */
+  .hero{padding:clamp(64px,11vw,128px) 0 clamp(48px,7vw,80px)}
+  .eyebrow{color:var(--signal);margin-bottom:28px;display:flex;align-items:center;gap:12px}
+  .eyebrow::before{content:"";width:34px;height:1px;background:var(--signal)}
+  h1{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:clamp(2.4rem,6.4vw,4.7rem);line-height:1.0;letter-spacing:-.035em;max-width:16ch}
+  h1 .found{color:var(--signal)}
+  h1 .harn{color:var(--ember)}
+  .dek{margin-top:34px;max-width:62ch;font-size:clamp(1.05rem,1.8vw,1.3rem);color:var(--ink-soft)}
+  .dek strong{color:var(--ink);font-weight:600}
+
+  /* generic section */
+  .section{padding:clamp(58px,9vw,104px) 0}
+  .kicker{color:var(--signal);margin-bottom:14px}
+  .section h2,.darksec h2{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:clamp(1.9rem,4.2vw,3rem);letter-spacing:-.025em;line-height:1.05;max-width:20ch;margin-bottom:26px}
+  .lede{max-width:60ch;font-size:clamp(1.02rem,1.7vw,1.2rem);color:var(--ink-soft)}
+  .lede strong{color:var(--ink);font-weight:600}
+  .lede + .lede{margin-top:18px}
+
+  /* analogy callout */
+  .analogy{margin:34px 0 0;border-left:3px solid var(--ember);background:var(--paper-2);border-radius:0 12px 12px 0;padding:26px 28px;max-width:64ch}
+  .analogy p{font-size:clamp(1.05rem,1.8vw,1.28rem);color:var(--ink);font-family:"Bricolage Grotesque",sans-serif;font-weight:600;letter-spacing:-.01em;line-height:1.35}
+  .analogy p .e{color:var(--ember)}
+  .analogy p .f{color:var(--signal)}
+
+  /* stack diagram */
+  .stack{background:var(--substrate);color:var(--paper)}
+  .stack .wrap{padding:clamp(52px,8vw,88px) 28px}
+  .stack-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:48px}
+  .stack-head .mono{color:var(--signal-bright)}
+  .stack-head .sub{color:rgba(255,255,255,.5);font-size:.85rem}
+  .layer{margin-bottom:8px}
+  .layer-label{display:flex;align-items:center;gap:14px;margin-bottom:18px;color:rgba(255,255,255,.6)}
+  .layer-label .num{color:var(--signal-bright)}
+  .layer-label .what{margin-left:auto;color:rgba(255,255,255,.42);font-size:.82rem;letter-spacing:.03em;text-align:right}
+  .chips{display:flex;flex-wrap:wrap;gap:12px}
+  .chip{background:var(--substrate-2);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:14px 18px;min-width:120px;transition:transform .25s ease,border-color .25s ease}
+  .chip .name{font-family:"Bricolage Grotesque",sans-serif;font-weight:600;font-size:1rem}
+  .chip .role{display:block;margin-top:5px;color:rgba(255,255,255,.42);font-size:.6rem;letter-spacing:.14em;font-family:"IBM Plex Mono",monospace;text-transform:uppercase}
+  .chip:hover{transform:translateY(-3px);border-color:var(--signal-bright)}
+  .connectors{height:40px;position:relative;margin:6px 0 4px}
+  .connectors span{position:absolute;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,rgba(255,255,255,.05),rgba(122,107,255,.55));transform:scaleY(0);transform-origin:top;transition:transform .5s ease}
+  .plane-bar{position:relative;border-radius:12px;overflow:hidden;background:linear-gradient(90deg,var(--signal),#5a2ff2 55%,var(--signal-bright));box-shadow:0 0 0 1px rgba(122,107,255,.5),0 18px 50px -12px rgba(61,46,242,.7);transform:scaleX(0);transform-origin:left;transition:transform .9s cubic-bezier(.2,.85,.25,1)}
+  .pillars{display:flex;position:relative;z-index:2}
+  .pillar{flex:1;padding:22px 14px;text-align:center;color:#fff;border-right:1px solid rgba(255,255,255,.22)}
+  .pillar:last-child{border-right:none}
+  .pillar .p-name{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:1.02rem}
+  .pillar .p-sub{display:block;margin-top:3px;font-size:.68rem;color:rgba(255,255,255,.82)}
+  .plane-cap{text-align:center;margin-top:16px;color:#fff;font-weight:600;font-family:"Bricolage Grotesque",sans-serif;font-size:1.12rem}
+  .plane-cap span{color:var(--signal-bright)}
+  .foundation{display:flex;gap:12px;margin-top:30px}
+  .slab{flex:1;border:1px dashed rgba(255,255,255,.2);border-radius:10px;padding:18px 20px;color:rgba(255,255,255,.8)}
+  .slab .s-name{font-family:"Bricolage Grotesque",sans-serif;font-weight:600;color:#fff;font-size:1rem}
+  .slab .s-sub{font-size:.8rem;color:rgba(255,255,255,.5);margin-top:3px}
+
+  /* reveal */
+  .reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+  .reveal.in{opacity:1;transform:none}
+
+  /* points */
+  .points{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line-light);border:1px solid var(--line-light);margin-top:42px}
+  .point{background:var(--paper);padding:30px 26px}
+  .point .pn{color:var(--signal);margin-bottom:16px}
+  .point h3{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:1.22rem;letter-spacing:-.01em;margin-bottom:10px;line-height:1.15}
+  .point p{color:var(--ink-soft);font-size:.97rem}
+
+  /* doors */
+  .doors{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:42px}
+  .door{position:relative;background:var(--paper);border:1px solid var(--line-light);border-radius:16px;padding:30px 28px 26px;overflow:hidden}
+  .door::before{content:"";position:absolute;top:0;left:0;right:0;height:4px}
+  .door.d1::before{background:var(--ember)}
+  .door.d2::before{background:var(--signal)}
+  .door-top{display:flex;align-items:baseline;gap:12px;margin-bottom:8px}
+  .door-num{font-family:"IBM Plex Mono",monospace;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase}
+  .door.d1 .door-num{color:var(--ember)}
+  .door.d2 .door-num{color:var(--signal)}
+  .door-verdict{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;border-radius:20px}
+  .door.d1 .door-verdict{background:rgba(255,92,53,.12);color:var(--ember)}
+  .door.d2 .door-verdict{background:rgba(61,46,242,.1);color:var(--signal)}
+  .door h3{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:1.4rem;letter-spacing:-.02em;line-height:1.08}
+  .door .essence{color:var(--ink-soft);font-size:.98rem;margin:10px 0 18px;line-height:1.5}
+  .door ul{list-style:none}
+  .door li{position:relative;padding:8px 0 8px 18px;font-size:.95rem;color:var(--ink);border-top:1px solid var(--line-light);line-height:1.4}
+  .door li:first-child{border-top:none}
+  .door li::before{content:"";position:absolute;left:0;top:15px;width:6px;height:6px;border-radius:50%}
+  .door.d1 li::before{background:var(--ember)}
+  .door.d2 li::before{background:var(--signal)}
+
+  /* two-column fit (books) */
+  .darksec{background:var(--substrate);color:var(--paper)}
+  .darksec .wrap{padding:clamp(58px,9vw,104px) 28px}
+  .darksec .kicker{color:var(--signal-bright)}
+  .darksec .lede{color:rgba(255,255,255,.66)}
+  .darksec .lede strong{color:#fff}
+  .books{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:42px}
+  .book{border:1px solid var(--line-dark);border-radius:16px;padding:30px 28px;background:var(--substrate-2)}
+  .book.msft{border-top:3px solid var(--signal-bright)}
+  .book.gen{border-top:3px solid var(--ember)}
+  .book .b-grav{font-family:"IBM Plex Mono",monospace;font-size:.64rem;letter-spacing:.13em;text-transform:uppercase;margin-bottom:10px}
+  .book.msft .b-grav{color:var(--signal-bright)}
+  .book.gen .b-grav{color:var(--ember)}
+  .book h3{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:1.4rem;letter-spacing:-.02em;color:#fff;margin-bottom:18px}
+  .book ul{list-style:none}
+  .book li{position:relative;padding:9px 0 9px 18px;font-size:.96rem;color:rgba(255,255,255,.84);line-height:1.4}
+  .book li::before{content:"";position:absolute;left:0;top:16px;width:6px;height:6px;border-radius:50%}
+  .book.msft li::before{background:var(--signal-bright)}
+  .book.gen li::before{background:var(--ember)}
+  .fit-punch{text-align:center;margin-top:46px;font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:clamp(1.6rem,3.6vw,2.6rem);letter-spacing:-.03em;color:#fff}
+  .fit-punch span{color:var(--signal-bright)}
+
+  /* honest winners */
+  .overlap{margin-top:42px;padding:34px 32px;border-radius:16px;background:linear-gradient(120deg,rgba(255,92,53,.08),rgba(61,46,242,.14));border:1px solid var(--line-light)}
+  .overlap .o-tag{font-family:"IBM Plex Mono",monospace;font-size:.66rem;letter-spacing:.13em;text-transform:uppercase;color:var(--signal);margin-bottom:14px}
+  .overlap p.big{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;color:var(--ink);font-size:clamp(1.2rem,2.4vw,1.6rem);letter-spacing:-.02em;line-height:1.25;max-width:34ch}
+  .overlap p.big span{color:var(--signal)}
+
+  /* takeaway */
+  .take{border-top:1px solid var(--line-light);padding:clamp(58px,9vw,104px) 0 70px}
+  .take .kicker{color:var(--signal)}
+  .take blockquote{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:clamp(1.6rem,3.7vw,2.6rem);letter-spacing:-.025em;line-height:1.14;max-width:26ch;margin:14px 0 40px}
+  .take blockquote .hl{color:var(--signal)}
+  .sign{display:flex;align-items:center;gap:14px;color:var(--mist)}
+  .sign .wordmark{color:var(--ink);font-size:1.15rem}
+  .sign .rule{flex:1;height:1px;background:var(--line-light)}
+
+  .converge-tick{text-align:center;color:rgba(122,107,255,.55);font-size:1.1rem;letter-spacing:.4em;margin:18px 0 0}
+  .both-rest{margin-top:14px;background:var(--substrate);color:var(--paper);border-radius:14px;padding:28px 30px;text-align:center;box-shadow:0 0 0 1px rgba(122,107,255,.4),0 16px 44px -16px rgba(61,46,242,.55)}
+  .both-rest .br-tag{font-family:"IBM Plex Mono",monospace;font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:var(--signal-bright);margin-bottom:12px}
+  .both-rest p{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:clamp(1.15rem,2.3vw,1.55rem);letter-spacing:-.02em;color:#fff;line-height:1.3;max-width:48ch;margin:0 auto}
+  .both-rest p span{color:var(--signal-bright)}
+
+  /* technical appendix */
+  .appendix{background:var(--substrate);color:var(--paper);border-top:1px dashed var(--line-dark)}
+  .appendix .wrap{padding:clamp(56px,8vw,96px) 28px}
+  .appendix .kicker{color:var(--signal-bright)}
+  .appendix h2{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:clamp(1.7rem,3.8vw,2.7rem);letter-spacing:-.03em;line-height:1.05;margin-bottom:14px;color:#fff;max-width:22ch}
+  .appendix .sub{color:rgba(255,255,255,.6);font-size:1rem;max-width:58ch;margin-bottom:44px}
+  .ap-block{margin-bottom:42px}
+  .ap-block:last-child{margin-bottom:0}
+  .ap-h{font-family:"IBM Plex Mono",monospace;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:22px}
+  .ap-h b{color:var(--signal-bright);font-weight:600}
+  .flowpair{display:grid;grid-template-columns:1fr;gap:18px}
+  .flane{border:1px solid var(--line-dark);border-radius:14px;background:var(--substrate-2);overflow:hidden}
+  .flane.d1{border-top:3px solid var(--ember)}
+  .flane.d2{border-top:3px solid var(--signal-bright)}
+  .flane-head{padding:14px 20px;border-bottom:1px solid var(--line-dark);font-family:"IBM Plex Mono",monospace;font-size:.66rem;letter-spacing:.12em;text-transform:uppercase}
+  .flane.d1 .flane-head{color:var(--ember)}
+  .flane.d2 .flane-head{color:var(--signal-bright)}
+  .chain{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:18px 20px 6px}
+  .node{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.13);border-radius:8px;padding:8px 12px;font-size:.81rem;color:#fff;line-height:1.2}
+  .arrow{color:rgba(122,107,255,.7);font-size:.9rem}
+  .flane.d1 .arrow{color:rgba(255,92,53,.7)}
+  .facts{padding:8px 20px 18px;display:grid;gap:7px}
+  .fact{display:grid;grid-template-columns:78px 1fr;gap:10px}
+  .fact .fk{font-family:"IBM Plex Mono",monospace;font-size:.57rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mist);padding-top:2px}
+  .fact .fv{font-size:.86rem;color:rgba(255,255,255,.82);line-height:1.4}
+  .fact .fv code{font-family:"IBM Plex Mono",monospace;font-size:.82em;background:rgba(255,255,255,.08);padding:1px 5px;border-radius:4px}
+  .common-note{margin-top:18px;padding:18px 22px;border-radius:12px;background:rgba(122,107,255,.1);border:1px solid rgba(122,107,255,.3);font-size:.92rem;color:rgba(255,255,255,.85);line-height:1.45}
+  .common-note b{color:#fff;font-weight:600}
+  .meters{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .mcol{border:1px solid var(--line-dark);border-radius:14px;background:var(--substrate-2)}
+  .mcol.d1{border-top:3px solid var(--ember)}
+  .mcol.d2{border-top:3px solid var(--signal-bright)}
+  .mcol-head{padding:14px 20px;border-bottom:1px solid var(--line-dark)}
+  .mcol-head .md{font-family:"IBM Plex Mono",monospace;font-size:.62rem;letter-spacing:.13em;text-transform:uppercase}
+  .mcol.d1 .md{color:var(--ember)}
+  .mcol.d2 .md{color:var(--signal-bright)}
+  .mcol-head .mt{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:1.05rem;color:#fff;margin-top:3px}
+  .mrow{padding:14px 20px;border-top:1px solid rgba(255,255,255,.07)}
+  .mrow:first-of-type{border-top:none}
+  .mrow .who{font-family:"IBM Plex Mono",monospace;font-size:.57rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mist);margin-bottom:5px}
+  .mrow .pay{font-size:.88rem;color:rgba(255,255,255,.85);line-height:1.4}
+  .mrow .pay b{color:#fff;font-weight:600}
+  .meter-note{margin-top:18px;padding:16px 20px;border-radius:12px;border:1px dashed rgba(255,255,255,.2);font-size:.88rem;color:rgba(255,255,255,.82);line-height:1.45}
+  .meter-note b{color:var(--signal-bright);font-weight:600}
+
+  @media(max-width:760px){
+    .points{grid-template-columns:1fr}
+    .doors{grid-template-columns:1fr}
+    .books{grid-template-columns:1fr}
+    .meters{grid-template-columns:1fr}
+    .foundation{flex-direction:column}
+    .pillar .p-sub{display:none}
+    .pillar{padding:16px 8px}
+    .pillar .p-name{font-size:.82rem}
+    .chip{flex:1;min-width:calc(50% - 12px)}
+  }
+  @media(prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+    .reveal{opacity:1;transform:none}
+    .plane-bar{transform:none}
+    .connectors span{transform:none}
+  }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="wrap">
+      <span class="wordmark">ai<span class="dot">.</span>expected</span>
+      <span class="mono tag">A point of view</span>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="wrap">
+      <div class="mono eyebrow">Making sense of AI agents</div>
+      <h1>Genspark is a <span class="harn">harness</span>. Microsoft is the <span class="found">foundation</span>.</h1>
+      <p class="dek">AI agents are multiplying, and it's getting hard to tell them apart. This is a simple way to think about them — the idea of a "harness" — and why pairing a capable harness like Genspark with a trusted foundation like Microsoft is such a strong fit. <strong>Including the honest places where one side gains more than the other.</strong></p>
+    </div>
+  </section>
+
+  <!-- WHAT IS A HARNESS -->
+  <section class="section">
+    <div class="wrap">
+      <div class="mono kicker">Start here</div>
+      <h2>What's a harness?</h2>
+      <p class="lede">An AI model — the kind built by OpenAI, Anthropic, or Google — is like an engine. Powerful, but on its own it doesn't actually <em>do</em> anything for you.</p>
+      <div class="analogy">
+        <p>A <span class="e">harness</span> is the car built around that engine — the wheel, the dashboard, the connection to the road. It turns raw intelligence into something a person can actually drive to get work done.</p>
+      </div>
+      <p class="lede" style="margin-top:30px">In plain terms, the harness is the part knowledge workers actually open and use. It connects the AI to your real tools, keeps track of what you're working on, and gets things done on your behalf. <strong>Genspark is a harness. Microsoft Copilot is a harness. The coding tools your engineers use — Claude Code, Codex, GitHub Copilot — are harnesses too.</strong> They share the same shape — and there will always be more than one, because different jobs call for different harnesses.</p>
+    </div>
+  </section>
+
+  <!-- THE STACK -->
+  <section class="stack">
+    <div class="wrap">
+      <div class="stack-head">
+        <span class="mono">The simple picture</span>
+        <span class="sub">What people use, what keeps it safe, what powers it.</span>
+      </div>
+
+      <div class="layer">
+        <div class="layer-label mono"><span class="num">Top</span> The harnesses <span class="what">what knowledge workers open and use</span></div>
+        <div class="chips">
+          <div class="chip reveal"><span class="name">Genspark</span><span class="role">Super agent</span></div>
+          <div class="chip reveal"><span class="name">M365 Copilot</span><span class="role">Microsoft</span></div>
+          <div class="chip reveal"><span class="name">ChatGPT</span><span class="role">Assistant</span></div>
+          <div class="chip reveal"><span class="name">Claude Code</span><span class="role">For engineers</span></div>
+          <div class="chip reveal"><span class="name">Codex</span><span class="role">For engineers</span></div>
+          <div class="chip reveal"><span class="name">GitHub Copilot</span><span class="role">For engineers</span></div>
+          <div class="chip reveal"><span class="name">…and more</span><span class="role">Always growing</span></div>
+        </div>
+      </div>
+
+      <div class="connectors" id="connectors"></div>
+
+      <div class="layer">
+        <div class="layer-label mono"><span class="num">Middle</span> The trusted foundation <span class="what">Microsoft's role</span></div>
+        <div class="plane-bar" id="planeBar">
+          <div class="pillars">
+            <div class="pillar"><span class="p-name">Security</span><span class="p-sub">data stays protected</span></div>
+            <div class="pillar"><span class="p-name">Identity</span><span class="p-sub">who's allowed in</span></div>
+            <div class="pillar"><span class="p-name">Oversight</span><span class="p-sub">what's being done</span></div>
+            <div class="pillar"><span class="p-name">An off-switch</span><span class="p-sub">control when needed</span></div>
+          </div>
+        </div>
+        <p class="plane-cap reveal">Every harness above runs on <span>this shared foundation.</span></p>
+      </div>
+
+      <div class="layer" style="margin-top:34px">
+        <div class="layer-label mono"><span class="num">Bottom</span> The engines &amp; the fuel <span class="what">what powers it all</span></div>
+        <div class="foundation">
+          <div class="slab reveal"><div class="s-name">The AI models</div><div class="s-sub">The raw intelligence the harness drives.</div></div>
+          <div class="slab reveal"><div class="s-name">Your company's knowledge &amp; the cloud</div><div class="s-sub">Your information, and the infrastructure it all runs on.</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHAT A HARNESS DOES -->
+  <section class="section">
+    <div class="wrap">
+      <div class="mono kicker">The job it does</div>
+      <h2>A harness does three things a raw model can't.</h2>
+      <div class="points">
+        <div class="point reveal">
+          <div class="mono pn">01</div>
+          <h3>Connects</h3>
+          <p>It links the AI to your real world — your email, your files, the web — so it's working with actual information, not guessing.</p>
+        </div>
+        <div class="point reveal">
+          <div class="mono pn">02</div>
+          <h3>Remembers</h3>
+          <p>It keeps track of what you're working on, so each request builds on the last instead of starting from a blank page.</p>
+        </div>
+        <div class="point reveal">
+          <div class="mono pn">03</div>
+          <h3>Acts</h3>
+          <p>It doesn't just answer questions — it does the work and hands you something finished: a draft, a deck, a piece of research.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GENSPARK -->
+  <section class="section">
+    <div class="wrap">
+      <div class="mono kicker">The example</div>
+      <h2>Genspark is a harness — and a strong one.</h2>
+      <p class="lede">Genspark calls itself an "AI super agent." In our terms, that's a particularly capable harness. Rather than relying on a single AI model, <strong>it combines several of the best — ChatGPT, Claude, and Gemini among them — and pairs them with dozens of tools.</strong></p>
+      <p class="lede">The result is finished work, not just answers: research pulled together, documents written, presentations built. That's a harness doing its job unusually well — which is exactly why it's worth understanding how it fits into a company.</p>
+    </div>
+  </section>
+
+  <!-- TWO WAYS IN -->
+  <section class="section">
+    <div class="wrap">
+      <div class="mono kicker">Two ways to use it</div>
+      <h2>From Genspark's app, or from inside Microsoft — both run on Microsoft.</h2>
+      <p class="lede">There are two ways people reach Genspark. They feel different from the outside, but underneath they lean on the same place.</p>
+      <div class="doors">
+        <div class="door d1 reveal">
+          <div class="door-top"><span class="door-num">Way 1</span><span class="door-verdict">From Genspark's app</span></div>
+          <h3>Straight from Genspark's own app</h3>
+          <p class="essence">An employee signs in at Genspark — on the website or its installable app (a Progressive Web App that sits on the desktop like any other program) — and connects their work account. Fast and self-serve, but no one in the company is watching.</p>
+          <ul>
+            <li>It still reaches into your Microsoft information to do the work</li>
+            <li>It still runs on Microsoft's cloud underneath</li>
+            <li>But IT can't see it, and there are no controls</li>
+          </ul>
+        </div>
+        <div class="door d2 reveal">
+          <div class="door-top"><span class="door-num">Way 2</span><span class="door-verdict">From inside Microsoft</span></div>
+          <h3>Right inside Teams and the Microsoft apps</h3>
+          <p class="essence">IT deploys Genspark so it shows up inside the tools people already use — recognized, supervised, and properly governed.</p>
+          <ul>
+            <li>The same Microsoft information, but permission-checked</li>
+            <li>The same Microsoft cloud, now with security and oversight</li>
+            <li>Leadership can see it, steer it, and switch it off</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="converge-tick" aria-hidden="true">▾&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;▾</div>
+      <div class="both-rest reveal">
+        <div class="br-tag">The point worth noticing</div>
+        <p>Either way, <span>Microsoft is underneath</span> — it's your data and your cloud doing the work. You never really use Genspark without using Microsoft too.</p>
+      </div>
+
+      <p class="lede" style="margin-top:30px"><strong>So the real choice isn't "Microsoft or Genspark."</strong> It's whether Genspark runs on Microsoft <em>with</em> oversight, or without it. And that's exactly the case for bringing it in the front door.</p>
+    </div>
+  </section>
+
+  <!-- WHY THEY FIT -->
+  <section class="darksec">
+    <div class="wrap">
+      <div class="mono kicker">Why it's a good fit</div>
+      <h2>Each brings what the other doesn't.</h2>
+      <p class="lede">Neither company is trying to be the other. That's exactly what makes the pairing work.</p>
+      <div class="books">
+        <div class="book msft reveal">
+          <div class="b-grav">Microsoft brings</div>
+          <h3>The trusted foundation</h3>
+          <ul>
+            <li>Security, identity, and oversight a large company requires</li>
+            <li>The cloud everything runs on</li>
+            <li>One safe, organized view of the company's own knowledge</li>
+            <li>The platform leadership already trusts</li>
+          </ul>
+        </div>
+        <div class="book gen reveal">
+          <div class="b-grav">Genspark brings</div>
+          <h3>A uniquely capable agent</h3>
+          <ul>
+            <li>The best of several AI models, not just one</li>
+            <li>Dozens of tools that produce finished work</li>
+            <li>A polished experience people actually want to use</li>
+            <li>Specialized capability Microsoft doesn't have to build</li>
+          </ul>
+        </div>
+      </div>
+      <p class="fit-punch reveal">A great agent, on a <span>foundation you trust.</span></p>
+    </div>
+  </section>
+
+  <!-- THE HONEST PART -->
+  <section class="section">
+    <div class="wrap">
+      <div class="mono kicker">The honest part</div>
+      <h2>The value doesn't split evenly — and that's fine.</h2>
+      <p class="lede">In any good partnership, the benefits aren't perfectly equal in every place. It's worth naming plainly, because it's a sign of a healthy fit, not a problem to solve.</p>
+      <div class="points" style="margin-top:36px">
+        <div class="point reveal">
+          <div class="mono pn">Microsoft gains</div>
+          <h3>A stronger platform</h3>
+          <p>Genspark runs on Microsoft's security, cloud, and even much of its AI. Every capable agent that joins makes Microsoft's foundation more valuable.</p>
+        </div>
+        <div class="point reveal">
+          <div class="mono pn">Genspark gains</div>
+          <h3>Reach and trust</h3>
+          <p>It reaches large enterprises it couldn't on its own — and inherits instant credibility, because Microsoft's oversight vouches for it.</p>
+        </div>
+        <div class="point reveal">
+          <div class="mono pn">The customer gains</div>
+          <h3>Power, used safely</h3>
+          <p>A genuinely powerful agent that can be adopted with confidence, because it's governed rather than slipping in the side door.</p>
+        </div>
+      </div>
+      <div class="overlap reveal">
+        <div class="o-tag">The takeaway on balance</div>
+        <p class="big">Three winners, uneven in places. <span>That's how strong platform partnerships are supposed to work.</span></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAKEAWAY -->
+  <section class="take">
+    <div class="wrap">
+      <div class="mono kicker">In a sentence</div>
+      <blockquote>Don't fear the flood of AI agents. See the one thing they share — they're all <span class="hl">harnesses</span> — then welcome the capable ones, and run them on a foundation you trust.</blockquote>
+      <div class="sign">
+        <span class="wordmark">ai<span style="color:var(--signal)">.</span>expected</span>
+        <span class="rule"></span>
+        <span class="mono">Genspark &amp; Microsoft</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- TECHNICAL APPENDIX -->
+  <section class="appendix">
+    <div class="wrap">
+      <div class="mono kicker">Appendix — for the technical reader</div>
+      <h2>How access and billing actually work.</h2>
+      <p class="sub">The page above is the plain-language version. This is the mechanics, at a glance — what authenticates, where the request goes, and who meters it — for each of the two doors. The short version: in both, the prompt and the data leave Microsoft for Genspark's cloud; what changes is the identity model and the governance around it.</p>
+
+      <!-- AUTH FLOW -->
+      <div class="ap-block">
+        <div class="ap-h"><b>01</b> &nbsp;Request &amp; authentication</div>
+        <div class="flowpair">
+          <div class="flane d1 reveal">
+            <div class="flane-head">Door 1 — from Genspark's own app</div>
+            <div class="chain">
+              <span class="node">User</span><span class="arrow">→</span>
+              <span class="node">Genspark app / PWA</span><span class="arrow">→</span>
+              <span class="node">Entra OAuth consent</span><span class="arrow">→</span>
+              <span class="node">Genspark backend (Azure)</span><span class="arrow">→</span>
+              <span class="node">MS Graph</span><span class="arrow">→</span>
+              <span class="node">Mailbox</span><span class="arrow">→</span>
+              <span class="node">Result</span>
+            </div>
+            <div class="facts">
+              <div class="fact"><span class="fk">Identity</span><span class="fv">Multi-tenant app → a service principal (enterprise app) in your tenant</span></div>
+              <div class="fact"><span class="fk">Token</span><span class="fv">OAuth 2.0 auth-code + PKCE; <b>delegated</b>, per-user scopes (<code>Mail.Read</code>, <code>Calendars.Read</code>, …)</span></div>
+              <div class="fact"><span class="fk">Used</span><span class="fv">Server-side, from Genspark's cloud — the token calls Graph on the user's behalf</span></div>
+            </div>
+          </div>
+
+          <div class="flane d2 reveal">
+            <div class="flane-head">Door 2 — from inside Teams (Agent 365)</div>
+            <div class="chain">
+              <span class="node">User in Teams</span><span class="arrow">→</span>
+              <span class="node">Genspark bot endpoint</span><span class="arrow">→</span>
+              <span class="node">Genspark agent runtime (Azure)</span><span class="arrow">→</span>
+              <span class="node">MS Graph (OBO token)</span><span class="arrow">→</span>
+              <span class="node">Mailbox</span><span class="arrow">→</span>
+              <span class="node">Answer in Teams</span>
+            </div>
+            <div class="facts">
+              <div class="fact"><span class="fk">Identity</span><span class="fv">A first-class <b>Entra Agent ID</b> — the agent is a governed citizen of the tenant</span></div>
+              <div class="fact"><span class="fk">Token</span><span class="fv"><b>On-behalf-of (OBO)</b> the signed-in user; single sign-on, no separate Genspark login to function</span></div>
+              <div class="fact"><span class="fk">Governed</span><span class="fv">Conditional Access · Purview DLP · Defender · audit trail · admin off-switch</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="common-note reveal"><b>The tell, true of both doors:</b> the orchestration and reasoning run in Genspark's cloud (confirmed Azure), so the prompt and the retrieved mailbox data leave the Microsoft boundary either way. Door 2 doesn't keep the data in-boundary — it trims it to permissions, runs it on-behalf-of the user, and logs it. To verify in your own tenant: Entra ID → Enterprise applications → Genspark → Permissions (delegated vs application) and Sign-in logs.</div>
+      </div>
+
+      <!-- BILLING -->
+      <div class="ap-block">
+        <div class="ap-h"><b>02</b> &nbsp;Billing — who meters what</div>
+        <div class="meters">
+          <div class="mcol d1 reveal">
+            <div class="mcol-head"><div class="md">Door 1 — Genspark's app</div><div class="mt">Two parties, light</div></div>
+            <div class="mrow"><div class="who">Microsoft side</div><div class="pay"><b>Nothing extra.</b> Rides on the M365 seats users already hold; Graph access is free.</div></div>
+            <div class="mrow"><div class="who">Genspark side</div><div class="pay">Free tier (<b>100 Genspark credits/day</b> per user) or a direct Genspark subscription.</div></div>
+          </div>
+          <div class="mcol d2 reveal">
+            <div class="mcol-head"><div class="md">Door 2 — Teams / Agent 365</div><div class="mt">Two parties, metered</div></div>
+            <div class="mrow"><div class="who">Microsoft side</div><div class="pay"><b>Agent 365 per-user license</b> (~$15, or bundled in E7) &nbsp;+&nbsp; <b>Work IQ → Copilot Credits</b> if it grounds through Work IQ. Admin must enable consumptive billing; credits are ~$0.01 each, via prepaid packs or pay-as-you-go to an Azure subscription.</div></div>
+            <div class="mrow"><div class="who">Genspark side</div><div class="pay">Free tier (<b>100 Genspark credits/day</b>) or the <b>Genspark Enterprise plan + DPA</b> for full access — direct or via Marketplace.</div></div>
+          </div>
+        </div>
+        <div class="meter-note reveal"><b>Don't conflate the meters.</b> Genspark credits ≠ Microsoft Copilot Credits — they're separate currencies on separate bills. Through Door 2, up to three meters can run at once: the Agent 365 seat, Microsoft Copilot Credits, and Genspark's own credits.</div>
+      </div>
+    </div>
+  </section>
+
+<script>
+  (function(){
+    var c=document.getElementById('connectors');
+    if(c){for(var i=0;i<5;i++){var s=document.createElement('span');s.style.left=(10+i*20)+'%';s.style.transitionDelay=(0.15*i)+'s';c.appendChild(s);}}
+    document.body.classList.add('loaded');
+    var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(reduce){
+      document.querySelectorAll('.reveal').forEach(function(el){el.classList.add('in')});
+      var pb0=document.getElementById('planeBar'); if(pb0) pb0.style.transform='none';
+      document.querySelectorAll('#connectors span').forEach(function(s){s.style.transform='none'});
+      return;
+    }
+    var io=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(!e.isIntersecting) return;
+        var el=e.target;
+        if(el.id==='planeBar'){
+          el.style.transform='scaleX(1)';
+          document.querySelectorAll('#connectors span').forEach(function(s){s.style.transform='scaleY(1)'});
+        } else { el.classList.add('in'); }
+        io.unobserve(el);
+      });
+    },{threshold:.2});
+    document.querySelectorAll('.reveal').forEach(function(el,i){el.style.transitionDelay=((i%5)*0.08)+'s';io.observe(el);});
+    var pb=document.getElementById('planeBar'); if(pb) io.observe(pb);
+  })();
+</script>
+</body>
+</html>
