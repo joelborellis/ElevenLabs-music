@@ -3,93 +3,61 @@ Request and response models for the composition plan endpoint.
 """
 
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
-class Section(BaseModel):
-    """A section of the composition plan."""
-    
-    section_name: str = Field(
-        ...,
-        description="Name of the section (e.g., 'Instant Hook', 'Quick Build')"
+class Chunk(BaseModel):
+    """A chunk (section) of a music_v2 composition plan."""
+
+    # Preserve any additional v2 fields (e.g. conditioning_ref, condition_strength)
+    model_config = ConfigDict(extra="allow")
+
+    text: str = Field(
+        default="",
+        description="Section marker and/or lyrics for this chunk (e.g. '[Intro]')"
     )
-    positive_local_styles: list[str] = Field(
+    positive_styles: list[str] = Field(
         default_factory=list,
-        description="Style descriptors to include in this section"
+        description="Style descriptors to include in this chunk"
     )
-    negative_local_styles: list[str] = Field(
+    negative_styles: list[str] = Field(
         default_factory=list,
-        description="Style descriptors to avoid in this section"
+        description="Style descriptors to avoid in this chunk"
     )
     duration_ms: int = Field(
         ...,
-        description="Duration of this section in milliseconds"
+        description="Duration of this chunk in milliseconds"
     )
-    lines: list[str] = Field(
-        default_factory=list,
-        description="Lyric lines for this section"
-    )
-    source_from: Optional[str] = Field(
+    context_adherence: Optional[str] = Field(
         default=None,
-        description="Source reference for this section"
+        description="How strictly the model should adhere to the surrounding context (e.g. 'high')"
     )
 
 
 class CompositionPlanResponse(BaseModel):
-    """Response model for the composition plan."""
-    
-    positive_global_styles: list[str] = Field(
+    """Response model for a music_v2 composition plan."""
+
+    chunks: list[Chunk] = Field(
         default_factory=list,
-        description="Global style descriptors to include in the composition"
+        description="List of chunks (sections) in the composition"
     )
-    negative_global_styles: list[str] = Field(
-        default_factory=list,
-        description="Global style descriptors to avoid in the composition"
-    )
-    sections: list[Section] = Field(
-        default_factory=list,
-        description="List of sections in the composition"
-    )
-    
+
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
-                    "positive_global_styles": [
-                        "electronic pop",
-                        "high-energy",
-                        "EDM",
-                        "uplifting",
-                        "euphoric",
-                        "122 bpm",
-                        "E major",
-                        "instrumental",
-                        "radio-polished production",
-                        "4/4 time signature"
-                    ],
-                    "negative_global_styles": [
-                        "vocals",
-                        "lyrics",
-                        "slow tempo",
-                        "dark",
-                        "acoustic",
-                        "lo-fi"
-                    ],
-                    "sections": [
+                    "chunks": [
                         {
-                            "section_name": "Instant Hook",
-                            "positive_local_styles": [
-                                "immediate start",
-                                "punchy drums",
-                                "bright synth chords"
+                            "text": "[Intro]",
+                            "positive_styles": [
+                                "120 BPM",
+                                "bright synthesizer hook",
+                                "uplifting electronic pop",
+                                "four-on-the-floor beat intro"
                             ],
-                            "negative_local_styles": [
-                                "slow build-up",
-                                "vocals"
-                            ],
-                            "duration_ms": 3000,
-                            "lines": [],
-                            "source_from": None
+                            "negative_styles": [],
+                            "duration_ms": 6000,
+                            "context_adherence": "high"
                         }
                     ]
                 }

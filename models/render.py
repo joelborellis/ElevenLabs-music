@@ -5,27 +5,19 @@ Request and response models for the music render endpoint.
 from typing import Optional
 from pydantic import BaseModel, Field
 
-from models.plan import Section
+from models.plan import Chunk
 
 
 class RenderRequest(BaseModel):
-    """Request model for rendering music from a composition plan."""
+    """Request model for rendering music from a composition plan (music_v2)."""
 
     title: Optional[str] = Field(
         default=None,
         description="Optional title for the output file (from /prompt response). If provided, used to name the output file."
     )
-    positive_global_styles: list[str] = Field(
+    chunks: list[Chunk] = Field(
         default_factory=list,
-        description="Global style descriptors to include in the composition"
-    )
-    negative_global_styles: list[str] = Field(
-        default_factory=list,
-        description="Global style descriptors to avoid in the composition"
-    )
-    sections: list[Section] = Field(
-        default_factory=list,
-        description="List of sections in the composition"
+        description="List of chunks (sections) in the composition"
     )
     
     model_config = {
@@ -33,30 +25,20 @@ class RenderRequest(BaseModel):
             "examples": [
                 {
                     "title": "Bright Pop Anthem",
-                    "positive_global_styles": [
-                        "indie pop",
-                        "indie rock",
-                        "uplifting",
-                        "95 bpm"
-                    ],
-                    "negative_global_styles": [
-                        "heavy reverb",
-                        "electronic drums"
-                    ],
-                    "sections": [
+                    "chunks": [
                         {
-                            "section_name": "Intro",
-                            "positive_local_styles": [
+                            "text": "[Intro]",
+                            "positive_styles": [
+                                "120 BPM",
                                 "clean electric guitar riff",
                                 "minimal instrumentation"
                             ],
-                            "negative_local_styles": [
+                            "negative_styles": [
                                 "full band",
                                 "vocals"
                             ],
-                            "duration_ms": 4000,
-                            "lines": [],
-                            "source_from": None
+                            "duration_ms": 6000,
+                            "context_adherence": "high"
                         }
                     ]
                 }

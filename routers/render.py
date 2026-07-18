@@ -31,15 +31,14 @@ tracer = trace.get_tracer(__name__)
     description="""
     Render music from a composition plan using the ElevenLabs API.
     
-    The composition plan includes global styles (positive and negative) and a list of
-    sections with their own local styles, duration, and optional lyrics.
+    The composition plan (music_v2 format) is a list of chunks, each with its own
+    positive/negative styles, duration, optional lyrics, and context adherence.
     
     ## Input
     
     A JSON composition plan with:
-    - **positive_global_styles**: Style descriptors to include globally
-    - **negative_global_styles**: Style descriptors to avoid globally
-    - **sections**: Array of sections with local styles, duration, and lyrics
+    - **chunks**: Array of chunks (sections), each with positive_styles,
+      negative_styles, duration_ms, text (lyrics/marker), and context_adherence
     
     ## Response
     
@@ -93,12 +92,12 @@ async def render_music(
     
     with tracer.start_as_current_span("render_music") as span:
         span.set_attribute("request_id", request_id)
-        span.set_attribute("sections_count", len(request_data.sections))
+        span.set_attribute("chunks_count", len(request_data.chunks))
         
         try:
             logger.info(
                 f"Rendering music - request_id={request_id}, "
-                f"sections={len(request_data.sections)}"
+                f"chunks={len(request_data.chunks)}"
             )
             
             # Convert request to dict for the ElevenLabs API
@@ -314,7 +313,7 @@ async def render_websocket(websocket: WebSocket):
 
         logger.info(
             f"WebSocket render starting - request_id={request_id}, "
-            f"sections={len(composition_plan.get('sections', []))}"
+            f"chunks={len(composition_plan.get('chunks', []))}"
         )
 
         # Define progress callback that sends WebSocket messages

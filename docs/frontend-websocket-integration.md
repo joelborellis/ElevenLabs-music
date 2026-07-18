@@ -153,27 +153,24 @@ Sent by the client to start rendering.
 interface RenderRequest {
   type: "render";
   composition_plan: {
-    title?: string;                    // Optional title for output filename
-    positive_global_styles: string[];  // Styles to include globally
-    negative_global_styles: string[];  // Styles to avoid globally
-    sections: Section[];               // Array of sections
+    title?: string;        // Optional title for output filename
+    chunks: Chunk[];       // Array of chunks (music_v2 format)
   };
 }
 
-interface Section {
-  section_name: string;
-  positive_local_styles: string[];
-  negative_local_styles: string[];
-  duration_ms: number;          // Minimum 3000ms per section
-  lines?: string[];             // Optional lyrics
-  source_from?: string | null;  // Optional source reference
+interface Chunk {
+  text: string;                     // Section marker (e.g. "[Intro]") and/or lyrics
+  positive_styles: string[];        // Styles to include in this chunk
+  negative_styles?: string[];       // Styles to avoid in this chunk
+  duration_ms: number;              // Minimum 3000ms per chunk
+  context_adherence?: string | null; // e.g. "high"
 }
 ```
 
 **Validation Rules:**
-- Must have at least one section
+- Must have at least one chunk
 - Total duration: 3,000ms - 600,000ms (3 seconds to 10 minutes)
-- Each section must be at least 3,000ms
+- Each chunk must be at least 3,000ms
 
 **Example:**
 ```json
@@ -181,22 +178,20 @@ interface Section {
   "type": "render",
   "composition_plan": {
     "title": "My Epic Track",
-    "positive_global_styles": ["electronic pop", "uplifting", "122 bpm"],
-    "negative_global_styles": ["vocals", "slow", "dark"],
-    "sections": [
+    "chunks": [
       {
-        "section_name": "Intro",
-        "positive_local_styles": ["energetic", "synth lead"],
-        "negative_local_styles": ["sparse"],
+        "text": "[Intro]",
+        "positive_styles": ["122 bpm", "electronic pop", "uplifting", "energetic", "synth lead"],
+        "negative_styles": ["vocals", "slow", "dark", "sparse"],
         "duration_ms": 5000,
-        "lines": []
+        "context_adherence": "high"
       },
       {
-        "section_name": "Main",
-        "positive_local_styles": ["full energy", "driving beat"],
-        "negative_local_styles": ["ambient"],
+        "text": "[Main]",
+        "positive_styles": ["122 bpm", "full energy", "driving beat"],
+        "negative_styles": ["ambient"],
         "duration_ms": 10000,
-        "lines": []
+        "context_adherence": "high"
       }
     ]
   }
@@ -259,15 +254,13 @@ function renderWithWebSocket(compositionPlan, onProgress, onResult, onError) {
 // Usage
 const compositionPlan = {
   title: "My Track",
-  positive_global_styles: ["electronic", "upbeat"],
-  negative_global_styles: ["slow"],
-  sections: [
+  chunks: [
     {
-      section_name: "Main",
-      positive_local_styles: ["energetic"],
-      negative_local_styles: [],
+      text: "[Main]",
+      positive_styles: ["electronic", "upbeat", "energetic"],
+      negative_styles: ["slow"],
       duration_ms: 10000,
-      lines: []
+      context_adherence: "high"
     }
   ]
 };

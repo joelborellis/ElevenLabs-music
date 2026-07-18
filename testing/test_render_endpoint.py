@@ -8,103 +8,80 @@ import os
 
 BASE_URL = "http://localhost:8000"
 
-# Sample composition plan for testing
+# Sample composition plan for testing (music_v2 chunks format)
 SAMPLE_COMPOSITION_PLAN = {
-    "positive_global_styles": [
-        "indie pop",
-        "indie rock",
-        "live band feel",
-        "uplifting",
-        "heartfelt",
-        "95 bpm",
-        "subtle R&B flavors",
-        "clear track separation",
-        "dry production",
-        "4/4 time signature",
-        "emotive vocals"
-    ],
-    "negative_global_styles": [
-        "heavy reverb",
-        "electronic drums",
-        "muddy mix",
-        "complex time signatures",
-        "aggressive",
-        "sad"
-    ],
-    "sections": [
+    "chunks": [
         {
-            "section_name": "Intro",
-            "positive_local_styles": [
+            "text": "[Intro]",
+            "positive_styles": [
+                "95 bpm",
+                "indie pop",
+                "live band feel",
                 "clean electric guitar riff",
                 "minimal instrumentation",
                 "light hi-hat tap"
             ],
-            "negative_local_styles": [
+            "negative_styles": [
                 "full band",
                 "vocals",
-                "heavy bass"
+                "heavy bass",
+                "heavy reverb"
             ],
             "duration_ms": 4000,
-            "lines": [],
-            "source_from": None
+            "context_adherence": "high"
         },
         {
-            "section_name": "Verse 1",
-            "positive_local_styles": [
+            "text": "[Verse 1]\nEmpty street starts to bloom,\nchasing shadows from the room.",
+            "positive_styles": [
+                "95 bpm",
                 "warm male vocal",
                 "authentic delivery",
                 "steady bassline enters",
                 "simple drum groove",
                 "light rhodes keyboard chords"
             ],
-            "negative_local_styles": [
+            "negative_styles": [
                 "shouting",
                 "complex harmonies",
                 "distorted guitar"
             ],
             "duration_ms": 7000,
-            "lines": [
-                "Empty street starts to bloom,",
-                "chasing shadows from the room."
-            ],
-            "source_from": None
+            "context_adherence": "high"
         },
         {
-            "section_name": "Chorus",
-            "positive_local_styles": [
+            "text": "[Chorus]\nOh, the sun is breaking through.",
+            "positive_styles": [
+                "95 bpm",
                 "uplifting energy",
                 "brighter vocal tone",
                 "fuller drum pattern with crash cymbal",
                 "more active guitar strumming",
                 "resolute feel"
             ],
-            "negative_local_styles": [
+            "negative_styles": [
                 "minimalist",
                 "slow tempo",
                 "somber mood"
             ],
             "duration_ms": 5000,
-            "lines": [
-                "Oh, the sun is breaking through."
-            ],
-            "source_from": None
+            "context_adherence": "high"
         },
         {
-            "section_name": "Outro",
-            "positive_local_styles": [
+            "text": "[Outro]",
+            "positive_styles": [
+                "95 bpm",
                 "clean final chord",
                 "resolute ending",
                 "bass and drums stop together",
                 "guitar note sustains and fades"
             ],
-            "negative_local_styles": [
+            "negative_styles": [
                 "long fade out",
                 "abrupt cut",
                 "vocals"
             ],
             "duration_ms": 3000,
-            "lines": [],
-            "source_from": None
+            "context_adherence": "high"
         }
     ]
 }
@@ -116,7 +93,7 @@ def test_render_endpoint():
     url = f"{BASE_URL}/render"
     
     print(f"Testing POST {url}")
-    print(f"Composition plan sections: {len(SAMPLE_COMPOSITION_PLAN['sections'])}")
+    print(f"Composition plan chunks: {len(SAMPLE_COMPOSITION_PLAN['chunks'])}")
     print("-" * 50)
     
     try:
@@ -279,16 +256,13 @@ def test_render_endpoint_with_title():
 
     payload = {
         "title": "Epic Battle Theme",  # <-- New title field
-        "positive_global_styles": ["epic", "cinematic", "orchestral"],
-        "negative_global_styles": ["lo-fi", "ambient"],
-        "sections": [
+        "chunks": [
             {
-                "section_name": "Intro",
-                "positive_local_styles": ["building tension", "strings"],
-                "negative_local_styles": ["percussion"],
+                "text": "[Intro]",
+                "positive_styles": ["epic", "cinematic", "orchestral", "building tension", "strings"],
+                "negative_styles": ["percussion", "lo-fi", "ambient"],
                 "duration_ms": 5000,
-                "lines": [],
-                "source_from": None
+                "context_adherence": "high"
             }
         ]
     }
@@ -325,14 +299,12 @@ def test_render_validation():
 
     url = f"{BASE_URL}/render"
     
-    # Test with empty sections - should return 422
+    # Test with empty chunks - should return 422
     payload = {
-        "positive_global_styles": ["test"],
-        "negative_global_styles": [],
-        "sections": []
+        "chunks": []
     }
     
-    print(f"\nTesting render with empty sections (should return 422)")
+    print(f"\nTesting render with empty chunks (should return 422)")
     print("-" * 50)
     
     try:
@@ -340,7 +312,7 @@ def test_render_validation():
         print(f"Status: {response.status_code}")
         
         if response.status_code == 422:
-            print(f"✅ Correctly returned 422 for empty sections")
+            print(f"✅ Correctly returned 422 for empty chunks")
             print(f"Response: {response.json()}")
             return True
         elif response.status_code >= 400:

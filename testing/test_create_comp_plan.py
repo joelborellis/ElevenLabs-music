@@ -22,6 +22,7 @@ with open(PROMPT, "r", encoding="utf-8") as f:
 composition_plan = elevenlabs.music.composition_plan.create(
     prompt=USER_PROMPT,
     music_length_ms=10000,
+    model_id="music_v2",
 )
 
 print(json.dumps(composition_plan.model_dump(), indent=2))

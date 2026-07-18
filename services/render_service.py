@@ -24,25 +24,25 @@ ProgressCallback = Callable[[str, int, str], Awaitable[None]]
 
 def _validate_composition_plan(composition_plan: dict) -> tuple[list, int]:
     """
-    Validate a composition plan and return sections and total duration.
+    Validate a composition plan and return chunks and total duration.
 
     Args:
-        composition_plan: The composition plan dictionary
+        composition_plan: The composition plan dictionary (music_v2 format)
 
     Returns:
-        Tuple of (sections list, total_duration_ms)
+        Tuple of (chunks list, total_duration_ms)
 
     Raises:
         ValueError: If the composition plan is invalid
     """
-    sections = composition_plan.get('sections', [])
-    if not sections:
+    chunks = composition_plan.get('chunks', [])
+    if not chunks:
         raise ValueError(
-            "Composition plan must have at least one section. "
+            "Composition plan must have at least one chunk. "
             "Total duration must be between 3000ms and 600000ms."
         )
 
-    total_duration_ms = sum(s.get('duration_ms', 0) for s in sections)
+    total_duration_ms = sum(c.get('duration_ms', 0) for c in chunks)
     if total_duration_ms < 3000:
         raise ValueError(
             f"Composition plan total duration ({total_duration_ms}ms) is too short. "
@@ -54,15 +54,15 @@ def _validate_composition_plan(composition_plan: dict) -> tuple[list, int]:
             "Maximum duration is 600000ms (10 minutes)."
         )
 
-    for i, section in enumerate(sections):
-        section_duration = section.get('duration_ms', 0)
-        if section_duration < 3000:
+    for i, chunk in enumerate(chunks):
+        chunk_duration = chunk.get('duration_ms', 0)
+        if chunk_duration < 3000:
             raise ValueError(
-                f"Section '{section.get('section_name', i)}' duration ({section_duration}ms) "
-                "is too short. Each section must be at least 3000ms."
+                f"Chunk '{chunk.get('text', i)}' duration ({chunk_duration}ms) "
+                "is too short. Each chunk must be at least 3000ms."
             )
 
-    return sections, total_duration_ms
+    return chunks, total_duration_ms
 
 
 def _sanitize_filename(title: str) -> str:
@@ -126,12 +126,13 @@ class RenderService:
         logger.info("Starting music render with ElevenLabs API")
 
         # Validate composition plan
-        sections, total_duration_ms = _validate_composition_plan(composition_plan)
-        logger.debug(f"Composition plan sections: {len(sections)}, total duration: {total_duration_ms}ms")
+        chunks, total_duration_ms = _validate_composition_plan(composition_plan)
+        logger.debug(f"Composition plan chunks: {len(chunks)}, total duration: {total_duration_ms}ms")
         
         # Call ElevenLabs compose_detailed API
         track_details = self.client.music.compose_detailed(
             composition_plan=composition_plan,
+            model_id="music_v2",
         )
         
         logger.info(f"Render complete. Filename: {track_details.filename}")
@@ -212,7 +213,7 @@ class RenderService:
 
         # Stage 1: Validation
         await progress_callback("validating", 5, "Validating composition plan...")
-        sections, total_duration_ms = _validate_composition_plan(composition_plan)
+        chunks, total_duration_ms = _validate_composition_plan(composition_plan)
         await progress_callback("validated", 10, "Composition plan validated")
 
         # Stage 2: API Call with simulated progress
@@ -222,7 +223,8 @@ class RenderService:
         api_task = asyncio.create_task(
             asyncio.to_thread(
                 self.client.music.compose_detailed,
-                composition_plan=composition_plan
+                composition_plan=composition_plan,
+                model_id="music_v2"
             )
         )
 

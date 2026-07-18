@@ -112,14 +112,12 @@ async def test_validation_error():
     """Test that validation errors are properly returned."""
     uri = "ws://localhost:8000/render/ws"
 
-    # Invalid composition plan (no sections)
+    # Invalid composition plan (no chunks)
     request = {
         "type": "render",
         "composition_plan": {
             "title": "Invalid Test",
-            "positive_global_styles": ["ambient"],
-            "negative_global_styles": [],
-            "sections": []  # Empty sections should trigger validation error
+            "chunks": []  # Empty chunks should trigger validation error
         }
     }
 
@@ -134,7 +132,7 @@ async def test_validation_error():
 
             # Send invalid composition plan
             await websocket.send(json.dumps(request))
-            print("Sent invalid composition plan (empty sections)...")
+            print("Sent invalid composition plan (empty chunks)...")
 
             # Should receive error
             msg = await websocket.recv()

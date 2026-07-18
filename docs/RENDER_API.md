@@ -40,52 +40,44 @@ The implementation follows FastAPI best practices with a clean separation of con
 
 ### POST /render
 
-Renders music from a composition plan using the ElevenLabs `compose_detailed` API.
+Renders music from a composition plan using the ElevenLabs `compose_detailed` API with the `music_v2` model.
 
 #### Request Body
 
+The composition plan is a flat list of `chunks`. Each chunk carries its own positive/negative
+styles, duration, optional lyrics/section marker (`text`), and context adherence.
+
 ```json
 {
-  "positive_global_styles": [
-    "indie pop",
-    "indie rock",
-    "uplifting",
-    "95 bpm"
-  ],
-  "negative_global_styles": [
-    "heavy reverb",
-    "electronic drums"
-  ],
-  "sections": [
+  "chunks": [
     {
-      "section_name": "Intro",
-      "positive_local_styles": [
+      "text": "[Intro]",
+      "positive_styles": [
+        "95 bpm",
+        "indie pop",
         "clean electric guitar riff",
         "minimal instrumentation"
       ],
-      "negative_local_styles": [
+      "negative_styles": [
         "full band",
-        "vocals"
+        "vocals",
+        "heavy reverb"
       ],
       "duration_ms": 4000,
-      "lines": [],
-      "source_from": null
+      "context_adherence": "high"
     },
     {
-      "section_name": "Verse 1",
-      "positive_local_styles": [
+      "text": "[Verse 1]\nEmpty street starts to bloom,\nchasing shadows from the room.",
+      "positive_styles": [
+        "95 bpm",
         "warm male vocal",
         "steady bassline"
       ],
-      "negative_local_styles": [
+      "negative_styles": [
         "shouting"
       ],
       "duration_ms": 7000,
-      "lines": [
-        "Empty street starts to bloom,",
-        "chasing shadows from the room."
-      ],
-      "source_from": null
+      "context_adherence": "high"
     }
   ]
 }
@@ -95,20 +87,18 @@ Renders music from a composition plan using the ElevenLabs `compose_detailed` AP
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `positive_global_styles` | array[string] | No | Style descriptors to include globally |
-| `negative_global_styles` | array[string] | No | Style descriptors to avoid globally |
-| `sections` | array[Section] | No | List of sections in the composition |
+| `title` | string \| null | No | Optional title used to name the output file |
+| `chunks` | array[Chunk] | No | List of chunks (sections) in the composition |
 
-#### Section Fields
+#### Chunk Fields
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `section_name` | string | Yes | Name of the section |
-| `positive_local_styles` | array[string] | No | Styles to include in this section |
-| `negative_local_styles` | array[string] | No | Styles to avoid in this section |
-| `duration_ms` | integer | Yes | Duration in milliseconds |
-| `lines` | array[string] | No | Lyric lines for this section |
-| `source_from` | string | null | No | Source reference |
+| `text` | string | No | Section marker in square brackets (e.g. `[Intro]`) and/or lyric lines |
+| `positive_styles` | array[string] | No | Styles to include in this chunk |
+| `negative_styles` | array[string] | No | Styles to avoid in this chunk |
+| `duration_ms` | integer | Yes | Duration in milliseconds (min: 3000) |
+| `context_adherence` | string \| null | No | How strictly to adhere to surrounding chunks (e.g. `"high"`) |
 
 #### Response
 
@@ -252,16 +242,13 @@ After connecting, send a single JSON message to start rendering:
   "type": "render",
   "composition_plan": {
     "title": "My Song Title",
-    "positive_global_styles": ["ambient", "relaxing", "soft piano"],
-    "negative_global_styles": ["aggressive", "loud"],
-    "sections": [
+    "chunks": [
       {
-        "section_name": "Intro",
-        "positive_local_styles": ["soft pads", "gentle melody"],
-        "negative_local_styles": ["drums", "bass"],
+        "text": "[Intro]",
+        "positive_styles": ["ambient", "relaxing", "soft piano", "soft pads", "gentle melody"],
+        "negative_styles": ["aggressive", "loud", "drums", "bass"],
         "duration_ms": 5000,
-        "lines": [],
-        "source_from": null
+        "context_adherence": "high"
       }
     ]
   }
@@ -274,20 +261,17 @@ After connecting, send a single JSON message to start rendering:
 |-------|------|----------|-------------|
 | `type` | `"render"` | Yes | Must be exactly `"render"` |
 | `composition_plan.title` | string \| null | No | Used for output filename |
-| `composition_plan.positive_global_styles` | string[] | No | Styles to include globally |
-| `composition_plan.negative_global_styles` | string[] | No | Styles to avoid globally |
-| `composition_plan.sections` | Section[] | Yes | At least one section required |
-| `sections[].section_name` | string | Yes | Name of the section |
-| `sections[].positive_local_styles` | string[] | No | Styles for this section |
-| `sections[].negative_local_styles` | string[] | No | Styles to avoid in this section |
-| `sections[].duration_ms` | integer | Yes | Duration in ms (min: 3000) |
-| `sections[].lines` | string[] | No | Lyrics/vocal lines |
-| `sections[].source_from` | string \| null | No | Source reference |
+| `composition_plan.chunks` | Chunk[] | Yes | At least one chunk required |
+| `chunks[].text` | string | No | Section marker (e.g. `[Intro]`) and/or lyric lines |
+| `chunks[].positive_styles` | string[] | No | Styles to include in this chunk |
+| `chunks[].negative_styles` | string[] | No | Styles to avoid in this chunk |
+| `chunks[].duration_ms` | integer | Yes | Duration in ms (min: 3000) |
+| `chunks[].context_adherence` | string \| null | No | Adherence to surrounding chunks (e.g. `"high"`) |
 
 #### Validation Rules
 
 - Total duration: 3,000ms - 600,000ms (3 seconds to 10 minutes)
-- Each section: minimum 3,000ms
+- Each chunk: minimum 3,000ms
 
 #### Server Messages
 
@@ -358,7 +342,7 @@ Sent when an error occurs:
 {
   "type": "error",
   "error_code": "VALIDATION_ERROR",
-  "message": "Composition plan must have at least one section.",
+  "message": "Composition plan must have at least one chunk.",
   "timestamp": "2024-01-26T12:00:00.000000"
 }
 ```
@@ -368,7 +352,7 @@ Sent when an error occurs:
 | Code | Cause |
 |------|-------|
 | `INVALID_REQUEST` | Malformed JSON or missing `type`/`composition_plan` |
-| `VALIDATION_ERROR` | Invalid composition plan (no sections, duration too short/long) |
+| `VALIDATION_ERROR` | Invalid composition plan (no chunks, duration too short/long) |
 | `SERVER_ERROR` | ElevenLabs API failure or unexpected server error |
 
 #### JavaScript/TypeScript Example
@@ -417,9 +401,7 @@ function renderWithProgress(
 renderWithProgress(
   {
     title: "My Song",
-    positive_global_styles: ["ambient"],
-    negative_global_styles: [],
-    sections: [{ section_name: "Intro", duration_ms: 5000, lines: [] }]
+    chunks: [{ text: "[Intro]", positive_styles: ["ambient"], negative_styles: [], duration_ms: 5000, context_adherence: "high" }]
   },
   (stage, percent, message) => {
     console.log(`[${percent}%] ${stage}: ${message}`);
@@ -463,8 +445,7 @@ async def render_with_progress(composition_plan, on_progress):
 result = asyncio.run(render_with_progress(
     {
         "title": "My Song",
-        "positive_global_styles": ["ambient"],
-        "sections": [{"section_name": "Intro", "duration_ms": 5000, "lines": []}]
+        "chunks": [{"text": "[Intro]", "positive_styles": ["ambient"], "duration_ms": 5000, "context_adherence": "high"}]
     },
     lambda stage, pct, msg: print(f"[{pct}%] {stage}: {msg}")
 ))
@@ -482,15 +463,13 @@ print(f"Audio URL: {result['stream_url']}")
 curl -X POST http://localhost:8000/render \
   -H "Content-Type: application/json" \
   -d '{
-    "positive_global_styles": ["indie pop", "uplifting", "95 bpm"],
-    "negative_global_styles": ["heavy reverb", "sad"],
-    "sections": [
+    "chunks": [
       {
-        "section_name": "Intro",
-        "positive_local_styles": ["clean guitar", "minimal"],
-        "negative_local_styles": ["vocals"],
+        "text": "[Intro]",
+        "positive_styles": ["95 bpm", "indie pop", "uplifting", "clean guitar", "minimal"],
+        "negative_styles": ["heavy reverb", "sad", "vocals"],
         "duration_ms": 4000,
-        "lines": []
+        "context_adherence": "high"
       }
     ]
   }' > render_response.json
@@ -507,24 +486,20 @@ import requests
 
 # Render the music
 composition_plan = {
-    "positive_global_styles": ["indie pop", "uplifting", "95 bpm"],
-    "negative_global_styles": ["heavy reverb", "sad"],
-    "sections": [
+    "chunks": [
         {
-            "section_name": "Intro",
-            "positive_local_styles": ["clean guitar"],
-            "negative_local_styles": ["vocals"],
+            "text": "[Intro]",
+            "positive_styles": ["95 bpm", "indie pop", "uplifting", "clean guitar"],
+            "negative_styles": ["heavy reverb", "sad", "vocals"],
             "duration_ms": 4000,
-            "lines": [],
-            "source_from": None
+            "context_adherence": "high"
         },
         {
-            "section_name": "Verse",
-            "positive_local_styles": ["warm vocals"],
-            "negative_local_styles": ["shouting"],
+            "text": "[Verse]\nHello world, here we go",
+            "positive_styles": ["95 bpm", "warm vocals"],
+            "negative_styles": ["shouting"],
             "duration_ms": 8000,
-            "lines": ["Hello world, here we go"],
-            "source_from": None
+            "context_adherence": "high"
         }
     ]
 }
@@ -572,16 +547,13 @@ async function renderAndPlayMusic(compositionPlan) {
 
 // Usage
 const plan = {
-  positive_global_styles: ['indie pop', 'uplifting'],
-  negative_global_styles: ['sad'],
-  sections: [
+  chunks: [
     {
-      section_name: 'Intro',
-      positive_local_styles: ['guitar'],
-      negative_local_styles: [],
+      text: '[Intro]',
+      positive_styles: ['indie pop', 'uplifting', 'guitar'],
+      negative_styles: ['sad'],
       duration_ms: 4000,
-      lines: [],
-      source_from: null
+      context_adherence: 'high'
     }
   ]
 };
@@ -650,7 +622,7 @@ function MusicPlayer({ compositionPlan }) {
 {
   "detail": [
     {
-      "loc": ["body", "sections", 0, "duration_ms"],
+      "loc": ["body", "chunks", 0, "duration_ms"],
       "msg": "field required",
       "type": "value_error.missing"
     }

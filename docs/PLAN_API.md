@@ -10,7 +10,7 @@ The implementation follows FastAPI best practices with a clean separation of con
 .
 ├── models/              # Pydantic models for request/response validation
 │   ├── __init__.py
-│   └── plan.py         # PlanGenerationRequest, CompositionPlanResponse, Section
+│   └── plan.py         # PlanGenerationRequest, CompositionPlanResponse, Chunk
 ├── services/           # Business logic layer
 │   ├── __init__.py
 │   └── plan_generator.py  # OpenAI Agents integration for plan generation
@@ -22,7 +22,9 @@ The implementation follows FastAPI best practices with a clean separation of con
 
 ## Endpoint: POST /plan
 
-Generates a structured composition plan based on a text prompt. The composition plan can be used directly with the ElevenLabs `compose_detailed` API or the `/render` endpoint.
+Generates a structured composition plan based on a text prompt. The composition plan uses
+the ElevenLabs `music_v2` model and can be used directly with the `compose_detailed` API or
+the `/render` endpoint.
 
 ### Request Body
 
@@ -42,50 +44,40 @@ Generates a structured composition plan based on a text prompt. The composition 
 
 ### Response
 
+The `music_v2` composition plan is a flat list of `chunks`. Each chunk carries its own
+positive/negative styles, duration, optional lyrics/section marker (`text`), and context
+adherence.
+
 ```json
 {
-  "positive_global_styles": [
-    "electronic pop",
-    "high-energy",
-    "uplifting",
-    "122 bpm",
-    "E major"
-  ],
-  "negative_global_styles": [
-    "dark",
-    "slow tempo",
-    "acoustic"
-  ],
-  "sections": [
+  "chunks": [
     {
-      "section_name": "Intro",
-      "positive_local_styles": [
+      "text": "[Intro]",
+      "positive_styles": [
+        "122 BPM",
         "bright synth chords",
-        "punchy drums"
+        "punchy drums",
+        "uplifting electronic pop"
       ],
-      "negative_local_styles": [
+      "negative_styles": [
         "vocals",
         "slow build-up"
       ],
-      "duration_ms": 4000,
-      "lines": [],
-      "source_from": null
+      "duration_ms": 6000,
+      "context_adherence": "high"
     },
     {
-      "section_name": "Verse 1",
-      "positive_local_styles": [
+      "text": "[Verse 1]\nFeel the rhythm in the night,\nEverything is gonna be alright.",
+      "positive_styles": [
+        "122 BPM",
         "catchy melody",
         "rhythmic bassline"
       ],
-      "negative_local_styles": [
+      "negative_styles": [
         "heavy distortion"
       ],
-      "duration_ms": 8000,
-      "lines": [
-        "Feel the rhythm in the night,",
-        "Everything is gonna be alright."
-      ],
-      "source_from": null
+      "duration_ms": 10000,
+      "context_adherence": "high"
     }
   ]
 }
@@ -95,20 +87,17 @@ Generates a structured composition plan based on a text prompt. The composition 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `positive_global_styles` | array[string] | Style descriptors to include throughout the composition |
-| `negative_global_styles` | array[string] | Style descriptors to avoid throughout the composition |
-| `sections` | array[Section] | List of sections making up the composition |
+| `chunks` | array[Chunk] | List of chunks (sections) making up the composition |
 
-#### Section Fields
+#### Chunk Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `section_name` | string | Name of the section (e.g., "Intro", "Verse 1", "Chorus") |
-| `positive_local_styles` | array[string] | Style descriptors to include in this section |
-| `negative_local_styles` | array[string] | Style descriptors to avoid in this section |
-| `duration_ms` | integer | Duration of this section in milliseconds |
-| `lines` | array[string] | Lyric lines for this section (empty for instrumental) |
-| `source_from` | string | null | Source reference for this section |
+| `text` | string | Section marker in square brackets (e.g. `[Intro]`) and/or lyric lines. Empty for instrumental |
+| `positive_styles` | array[string] | Style descriptors to include in this chunk |
+| `negative_styles` | array[string] | Style descriptors to avoid in this chunk |
+| `duration_ms` | integer | Duration of this chunk in milliseconds (min: 3000) |
+| `context_adherence` | string \| null | How strictly the model adheres to surrounding chunks (e.g. `"high"`) |
 
 ### Example Usage
 

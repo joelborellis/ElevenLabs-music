@@ -87,7 +87,7 @@ class PromptGeneratorService:
         """
         if self._agent is None:
             self._agent = Agent(
-                model="gpt-5.2",
+                model="gpt-5.6",
                 name="prompt_generator_agent",
                 instructions=self.instructions,
                 tools=[WebSearchTool()],

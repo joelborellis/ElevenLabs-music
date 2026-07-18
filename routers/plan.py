@@ -29,8 +29,8 @@ tracer = trace.get_tracer(__name__)
     description="""
     Generate a composition plan using the ElevenLabs music API based on a text prompt.
     
-    The composition plan includes global styles (positive and negative) and a list of
-    sections with their own local styles, duration, and optional lyrics.
+    The composition plan (music_v2 format) is a list of chunks, each with its own
+    positive/negative styles, duration, optional lyrics/section marker, and context adherence.
     
     ## Input Parameters
     
@@ -48,9 +48,8 @@ tracer = trace.get_tracer(__name__)
     
     ## Response
     
-    Returns a structured composition plan with:
-    - Global positive and negative styles
-    - Sections with local styles, duration, and optional lyrics
+    Returns a structured composition plan with a list of chunks (sections), each
+    containing positive/negative styles, duration, lyrics, and context adherence.
     """,
     responses={
         200: {
@@ -58,16 +57,13 @@ tracer = trace.get_tracer(__name__)
             "content": {
                 "application/json": {
                     "example": {
-                        "positive_global_styles": ["electronic pop", "uplifting"],
-                        "negative_global_styles": ["dark", "slow tempo"],
-                        "sections": [
+                        "chunks": [
                             {
-                                "section_name": "Intro",
-                                "positive_local_styles": ["bright synths"],
-                                "negative_local_styles": ["vocals"],
-                                "duration_ms": 3000,
-                                "lines": [],
-                                "source_from": None
+                                "text": "[Intro]",
+                                "positive_styles": ["bright synths", "120 BPM"],
+                                "negative_styles": ["vocals"],
+                                "duration_ms": 6000,
+                                "context_adherence": "high"
                             }
                         ]
                     }
@@ -124,14 +120,14 @@ async def generate_plan(
             with tracer.start_as_current_span("elevenlabs_api_call"):
                 generated_plan = await service.generate_plan(request_data)
             
-            span.set_attribute("plan.sections_count", len(generated_plan.sections))
+            span.set_attribute("plan.chunks_count", len(generated_plan.chunks))
             span.set_attribute("success", True)
             
             logger.info(
                 f"Successfully generated composition plan",
                 extra={
                     "request_id": request_id,
-                    "sections_count": len(generated_plan.sections),
+                    "chunks_count": len(generated_plan.chunks),
                 }
             )
             

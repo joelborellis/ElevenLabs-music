@@ -31,9 +31,8 @@ def test_plan_endpoint():
         print(f"Response:\n{json.dumps(result, indent=2)}")
         
         # Validate response structure - now returns plan directly
-        assert "positive_global_styles" in result, "Response missing 'positive_global_styles'"
-        assert "negative_global_styles" in result, "Response missing 'negative_global_styles'"
-        assert "sections" in result, "Response missing 'sections'"
+        assert "chunks" in result, "Response missing 'chunks'"
+        assert isinstance(result["chunks"], list), "'chunks' should be a list"
         
         print("\n✅ Test passed!")
         return result

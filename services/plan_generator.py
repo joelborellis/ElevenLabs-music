@@ -15,7 +15,7 @@ from elevenlabs.client import ElevenLabs
 from models.plan import (
     PlanGenerationRequest,
     CompositionPlanResponse,
-    Section,
+    Chunk,
 )
 
 
@@ -136,32 +136,28 @@ class PlanGeneratorService:
             composition_plan = self._client.music.composition_plan.create(
                 prompt=request.prompt,
                 music_length_ms=music_length_ms,
+                model_id="music_v2",
             )
             
             # Convert the ElevenLabs response to our model
             plan_data = composition_plan.model_dump()
             
-            # Build sections from the response
-            sections = []
-            for section_data in plan_data.get("sections", []):
-                section = Section(
-                    section_name=section_data.get("section_name", ""),
-                    positive_local_styles=section_data.get("positive_local_styles", []),
-                    negative_local_styles=section_data.get("negative_local_styles", []),
-                    duration_ms=section_data.get("duration_ms", 0),
-                    lines=section_data.get("lines", []),
-                    source_from=section_data.get("source_from"),
+            # Build chunks from the response (music_v2 format)
+            chunks = []
+            for chunk_data in plan_data.get("chunks") or []:
+                chunk = Chunk(
+                    text=chunk_data.get("text", ""),
+                    positive_styles=chunk_data.get("positive_styles", []),
+                    negative_styles=chunk_data.get("negative_styles", []),
+                    duration_ms=chunk_data.get("duration_ms", 0),
+                    context_adherence=chunk_data.get("context_adherence"),
                 )
-                sections.append(section)
+                chunks.append(chunk)
             
-            response = CompositionPlanResponse(
-                positive_global_styles=plan_data.get("positive_global_styles", []),
-                negative_global_styles=plan_data.get("negative_global_styles", []),
-                sections=sections,
-            )
+            response = CompositionPlanResponse(chunks=chunks)
             
             logger.info(
-                f"Successfully generated composition plan with {len(sections)} sections"
+                f"Successfully generated composition plan with {len(chunks)} chunks"
             )
             
             return response

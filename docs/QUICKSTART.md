@@ -77,15 +77,13 @@ curl -X POST http://localhost:8000/plan \
 curl -X POST http://localhost:8000/render \
   -H "Content-Type: application/json" \
   -d '{
-    "positive_global_styles": ["indie pop", "uplifting"],
-    "negative_global_styles": ["sad"],
-    "sections": [
+    "chunks": [
       {
-        "section_name": "Intro",
-        "positive_local_styles": ["guitar"],
-        "negative_local_styles": [],
+        "text": "[Intro]",
+        "positive_styles": ["indie pop", "uplifting", "guitar"],
+        "negative_styles": ["sad"],
         "duration_ms": 4000,
-        "lines": []
+        "context_adherence": "high"
       }
     ]
   }'
@@ -128,7 +126,7 @@ A response like:
 }
 ```
 
-The `prompt` field contains the generated music prompt ready to use with ElevenLabs music-1 model!
+The `prompt` field contains the generated music prompt ready to use with ElevenLabs `music_v2` model!
 
 ## Available Endpoints
 
