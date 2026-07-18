@@ -9,6 +9,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Request, status, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, StreamingResponse
+from pydantic import ValidationError
 from opentelemetry import trace
 
 from models.render import RenderRequest, RenderResponse
@@ -29,17 +30,24 @@ tracer = trace.get_tracer(__name__)
     status_code=status.HTTP_200_OK,
     summary="Render music from composition plan",
     description="""
-    Render music from a composition plan using the ElevenLabs API.
-    
-    The composition plan (music_v2 format) is a list of chunks, each with its own
-    positive/negative styles, duration, optional lyrics, and context adherence.
-    
+    Render music using the ElevenLabs API (compose_detailed).
+
     ## Input
-    
-    A JSON composition plan with:
-    - **chunks**: Array of chunks (sections), each with positive_styles,
-      negative_styles, duration_ms, text (lyrics/marker), and context_adherence
-    
+
+    Provide EITHER a text prompt OR a composition plan (mutually exclusive):
+    - **prompt**: A simple text description to generate a song from. May be
+      combined with **music_length_ms** (3000-600000).
+    - **chunks**: A music_v2 composition plan — an array of chunks (sections),
+      each with positive_styles, negative_styles, duration_ms, text
+      (lyrics/marker), and context_adherence.
+
+    Additional pass-through parameters (all optional, with defaults):
+    - **model_id** (default "music_v2"), **force_instrumental**,
+      **store_for_inpainting**, **with_timestamps**, **sign_with_c2pa**,
+      **output_format**
+    - **title**: local-only, used to name the saved output file (not sent to
+      ElevenLabs).
+
     ## Response
     
     Returns metadata about the generated audio file including:
@@ -95,18 +103,16 @@ async def render_music(
         span.set_attribute("chunks_count", len(request_data.chunks))
         
         try:
+            mode = "prompt" if (request_data.prompt and request_data.prompt.strip()) else "plan"
             logger.info(
                 f"Rendering music - request_id={request_id}, "
-                f"chunks={len(request_data.chunks)}"
+                f"mode={mode}, chunks={len(request_data.chunks)}"
             )
-            
-            # Convert request to dict for the ElevenLabs API
-            # Exclude title from composition_plan as it's only used for filename
-            composition_plan = request_data.model_dump(exclude={"title"})
 
-            # Get the render service and render the music
+            # Get the render service and render the music (all compose_detailed
+            # parameters are passed through from the validated request)
             render_service = get_render_service()
-            result = render_service.render(composition_plan, title=request_data.title)
+            result = render_service.render(request_data)
             
             span.set_attribute("filename", result.filename)
             span.set_attribute("file_size_bytes", result.file_size_bytes)
@@ -290,13 +296,49 @@ async def render_websocket(websocket: WebSocket):
     )
 
     try:
-        # Wait for composition plan from client
-        data = await websocket.receive_json()
+        # Wait for composition plan from client. A non-JSON payload here is a
+        # genuinely malformed message -> INVALID_REQUEST.
+        try:
+            data = await websocket.receive_json()
+        except Exception as e:
+            logger.warning(f"Malformed WebSocket message - request_id={request_id}, error={str(e)}")
+            await websocket.send_json(
+                ErrorMessage(
+                    error_code="INVALID_REQUEST",
+                    message=f"Malformed message (expected JSON): {str(e)}"
+                ).model_dump()
+            )
+            await websocket.close()
+            return
 
-        # Parse and validate the request
+        # Parse and validate the request. Distinguish a plan-content validation
+        # failure (VALIDATION_ERROR) from a malformed message envelope
+        # (INVALID_REQUEST) so the error code reflects what actually went wrong.
         try:
             ws_request = RenderWebSocketRequest(**data)
+        except ValidationError as e:
+            # If any error is located under composition_plan, the plan itself is
+            # invalid; otherwise the message envelope (e.g. missing/incorrect
+            # "type") is malformed.
+            is_plan_error = any(
+                err.get("loc") and err["loc"][0] == "composition_plan"
+                for err in e.errors()
+            )
+            error_code = "VALIDATION_ERROR" if is_plan_error else "INVALID_REQUEST"
+            logger.warning(
+                f"Invalid WebSocket request - request_id={request_id}, "
+                f"code={error_code}, error={str(e)}"
+            )
+            await websocket.send_json(
+                ErrorMessage(
+                    error_code=error_code,
+                    message=str(e)
+                ).model_dump()
+            )
+            await websocket.close()
+            return
         except Exception as e:
+            # e.g. data was not a dict -> cannot even build the request envelope
             logger.warning(f"Invalid WebSocket request - request_id={request_id}, error={str(e)}")
             await websocket.send_json(
                 ErrorMessage(
@@ -307,13 +349,13 @@ async def render_websocket(websocket: WebSocket):
             await websocket.close()
             return
 
-        # Extract composition plan data
-        composition_plan = ws_request.composition_plan.model_dump(exclude={"title"})
-        title = ws_request.composition_plan.title
+        # The wrapped composition_plan field is itself a full RenderRequest
+        render_request = ws_request.composition_plan
+        mode = "prompt" if (render_request.prompt and render_request.prompt.strip()) else "plan"
 
         logger.info(
             f"WebSocket render starting - request_id={request_id}, "
-            f"chunks={len(composition_plan.get('chunks', []))}"
+            f"mode={mode}, chunks={len(render_request.chunks)}"
         )
 
         # Define progress callback that sends WebSocket messages
@@ -330,8 +372,7 @@ async def render_websocket(websocket: WebSocket):
         render_service = get_render_service()
 
         result = await render_service.render_with_progress(
-            composition_plan=composition_plan,
-            title=title,
+            request=render_request,
             progress_callback=send_progress
         )
 

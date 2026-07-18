@@ -94,7 +94,7 @@ class AgentPromptOutput(BaseModel):
     
     prompt: str = Field(
         ...,
-        description="The generated music prompt ready for ElevenLabs music-1 model"
+        description="The generated music prompt ready for ElevenLabs music_v2 model"
     )
     title: str = Field(
         ...,
@@ -111,7 +111,7 @@ class PromptGenerationResponse(BaseModel):
     
     prompt: str = Field(
         ...,
-        description="The generated music prompt ready for ElevenLabs music-1 model"
+        description="The generated music prompt ready for ElevenLabs music_v2 model"
     )
     title: str | None = Field(
         default=None,

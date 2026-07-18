@@ -9,4 +9,11 @@ wheels/
 # Virtual environments
 .venv
 .env
-./output
+
+# Generated audio output (runtime)
+/output/
+
+# Test runtime artifacts
+testing/generated_prompt.json
+testing/generated_comp_plan.json
+testing/music/

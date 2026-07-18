@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from elevenlabs.client import ElevenLabs
 from dotenv import load_dotenv
 
+from models.render import RenderRequest
+
 load_dotenv()
 
 logger = logging.getLogger(__name__)
@@ -108,13 +110,15 @@ class RenderService:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f"Render output directory: {self.output_dir}")
     
-    def render(self, composition_plan: dict, title: str | None = None) -> RenderResult:
+    def render(self, request: RenderRequest) -> RenderResult:
         """
-        Render music from a composition plan using ElevenLabs API.
+        Render music from a render request using the ElevenLabs API.
+
+        Passes through all supported ``compose_detailed`` parameters (prompt or
+        composition plan, model, instrumental flag, output format, etc.).
 
         Args:
-            composition_plan: The composition plan dictionary
-            title: Optional title to use for the output filename
+            request: The validated render request
 
         Returns:
             RenderResult with file details and metadata
@@ -125,16 +129,18 @@ class RenderService:
         """
         logger.info("Starting music render with ElevenLabs API")
 
-        # Validate composition plan
-        chunks, total_duration_ms = _validate_composition_plan(composition_plan)
-        logger.debug(f"Composition plan chunks: {len(chunks)}, total duration: {total_duration_ms}ms")
-        
-        # Call ElevenLabs compose_detailed API
-        track_details = self.client.music.compose_detailed(
-            composition_plan=composition_plan,
-            model_id="music_v2",
-        )
-        
+        compose_kwargs = request.to_compose_kwargs()
+
+        # Validate the composition plan only in plan-mode (prompt-mode has none)
+        if "composition_plan" in compose_kwargs:
+            chunks, total_duration_ms = _validate_composition_plan(compose_kwargs["composition_plan"])
+            logger.debug(f"Composition plan chunks: {len(chunks)}, total duration: {total_duration_ms}ms")
+        else:
+            logger.debug(f"Prompt-mode render (music_length_ms={request.music_length_ms})")
+
+        # Call ElevenLabs compose_detailed API with all requested parameters
+        track_details = self.client.music.compose_detailed(**compose_kwargs)
+
         logger.info(f"Render complete. Filename: {track_details.filename}")
         
         # Log all available attributes on track_details for debugging
@@ -156,8 +162,8 @@ class RenderService:
         logger.info("=" * 60)
 
         # Determine output filename
-        if title:
-            output_filename = _sanitize_filename(title)
+        if request.title:
+            output_filename = _sanitize_filename(request.title)
             logger.info(f"Using title-based filename: {output_filename}")
         else:
             output_filename = track_details.filename
@@ -190,16 +196,17 @@ class RenderService:
 
     async def render_with_progress(
         self,
-        composition_plan: dict,
-        title: str | None,
+        request: RenderRequest,
         progress_callback: ProgressCallback
     ) -> RenderResult:
         """
-        Render music from a composition plan with progress callbacks for WebSocket updates.
+        Render music from a render request with progress callbacks for WebSocket updates.
+
+        Passes through all supported ``compose_detailed`` parameters (prompt or
+        composition plan, model, instrumental flag, output format, etc.).
 
         Args:
-            composition_plan: The composition plan dictionary
-            title: Optional title to use for the output filename
+            request: The validated render request
             progress_callback: Async callback function(stage, percent, message)
 
         Returns:
@@ -211,10 +218,15 @@ class RenderService:
         """
         logger.info("Starting music render with progress updates")
 
-        # Stage 1: Validation
-        await progress_callback("validating", 5, "Validating composition plan...")
-        chunks, total_duration_ms = _validate_composition_plan(composition_plan)
-        await progress_callback("validated", 10, "Composition plan validated")
+        compose_kwargs = request.to_compose_kwargs()
+
+        # Stage 1: Validation (composition plan only; prompt-mode has no plan)
+        await progress_callback("validating", 5, "Validating render request...")
+        if "composition_plan" in compose_kwargs:
+            _validate_composition_plan(compose_kwargs["composition_plan"])
+            await progress_callback("validated", 10, "Composition plan validated")
+        else:
+            await progress_callback("validated", 10, "Prompt accepted")
 
         # Stage 2: API Call with simulated progress
         await progress_callback("generating", 15, "Generating music with ElevenLabs API...")
@@ -223,8 +235,7 @@ class RenderService:
         api_task = asyncio.create_task(
             asyncio.to_thread(
                 self.client.music.compose_detailed,
-                composition_plan=composition_plan,
-                model_id="music_v2"
+                **compose_kwargs
             )
         )
 
@@ -257,8 +268,8 @@ class RenderService:
         await increment_to(75, "processing", "Processing response...")
 
         # Stage 4: Determine filename
-        if title:
-            output_filename = _sanitize_filename(title)
+        if request.title:
+            output_filename = _sanitize_filename(request.title)
             logger.info(f"Using title-based filename: {output_filename}")
         else:
             output_filename = track_details.filename

@@ -6,8 +6,62 @@ This script demonstrates how to use the /prompt endpoint programmatically.
 
 import asyncio
 import json
+import re
 import httpx
+from pathlib import Path
 from pprint import pprint
+
+
+# Test payloads live in this JSON file so variations can be changed without
+# editing the script. It contains a "default" payload (used for the single
+# request) and a "cases" list (used by --all).
+TEST_CASES_PATH = Path(__file__).parent / "prompt_test_cases.json"
+
+# The generated prompt is written here as a ready-to-use /plan request body so it
+# can flow straight into test_plan_endpoint.py (which prefers this file when present).
+GENERATED_PROMPT_PATH = Path(__file__).parent / "generated_prompt.json"
+
+# Default song length (ms) used when no duration can be parsed from the prompt.
+DEFAULT_MUSIC_LENGTH_MS = 30000
+
+
+def load_test_data() -> dict:
+    """Load the default payload and preset combinations from the JSON file."""
+    with open(TEST_CASES_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def extract_music_length_ms(prompt: str) -> int:
+    """Best-effort duration parse from prompt text (mirrors the /plan service).
+
+    Looks for "N second(s)" or "N minute(s)"; falls back to the default length.
+    """
+    seconds = re.search(r"(\d+(?:\.\d+)?)\s*[-\s]?\s*seconds?", prompt, re.IGNORECASE)
+    if seconds:
+        return int(float(seconds.group(1)) * 1000)
+    minutes = re.search(r"(\d+(?:\.\d+)?)\s*[-\s]?\s*minutes?", prompt, re.IGNORECASE)
+    if minutes:
+        return int(float(minutes.group(1)) * 60 * 1000)
+    return DEFAULT_MUSIC_LENGTH_MS
+
+
+def save_generated_prompt(result: dict) -> None:
+    """Write the generated prompt as an exact /plan request body.
+
+    The /plan endpoint accepts ``{prompt, music_length_ms}``. The /prompt response
+    has no duration, so it is parsed from the prompt text (or defaulted).
+    test_plan_endpoint.py loads this file to plan the exact prompt produced here.
+    """
+    prompt_text = result["prompt"]
+    plan_ready = {
+        "prompt": prompt_text,
+        "music_length_ms": extract_music_length_ms(prompt_text),
+    }
+    with open(GENERATED_PROMPT_PATH, "w", encoding="utf-8") as f:
+        json.dump(plan_ready, f, indent=2)
+    print(f"\n💾 Saved plan-ready prompt to: {GENERATED_PROMPT_PATH.name} "
+          f"(music_length_ms={plan_ready['music_length_ms']})")
+    print("   Run test_plan_endpoint.py to plan this exact prompt.")
 
 
 async def test_prompt_generation():
@@ -15,14 +69,8 @@ async def test_prompt_generation():
 
     base_url = "http://localhost:8000"
 
-    # Example request payload
-    payload = {
-        "project_blueprint": "ad_brand_fast_hook",
-        "sound_profile": "bright_pop_electro",
-        "delivery_and_control": "balanced_studio",
-        "instrumental_only": False,
-        "user_narrative": None,
-    }
+    # Example request payload (loaded from prompt_test_cases.json -> "default")
+    payload = load_test_data()["default"]
 
     print("=" * 80)
     print("Testing /prompt endpoint")
@@ -57,6 +105,9 @@ async def test_prompt_generation():
                 print("-" * 80)
                 print(json.dumps(result, indent=2))
                 print("-" * 80)
+
+                # Persist the prompt in plan-ready form for the plan endpoint test
+                save_generated_prompt(result)
             else:
                 print(f"\n✗ Error: {response.status_code}")
                 print(response.text)
@@ -73,58 +124,8 @@ async def test_all_combinations():
 
     base_url = "http://localhost:8000"
 
-    test_cases = [
-        {
-            "name": "Meditation/Wellness Track",
-            "payload": {
-                "project_blueprint": "meditation_sleep",
-                "sound_profile": "lofi_cozy",
-                "delivery_and_control": "exploratory_iterate",
-                "instrumental_only": True,
-                "user_narrative": "A peaceful morning routine, sipping tea while watching the sunrise.",
-            },
-        },
-        {
-            "name": "Video Game Action Music",
-            "payload": {
-                "project_blueprint": "video_game_action_loop",
-                "sound_profile": "epic_cinematic",
-                "delivery_and_control": "balanced_studio",
-                "instrumental_only": True,
-                "user_narrative": "A climactic battle scene in a space opera, starships clashing among the stars.",
-            },
-        },
-        {
-            "name": "Podcast Background",
-            "payload": {
-                "project_blueprint": "podcast_voiceover_loop",
-                "sound_profile": "lofi_cozy",
-                "delivery_and_control": "balanced_studio",
-                "instrumental_only": True,
-                "user_narrative": None,
-            },
-        },
-        {
-            "name": "Personal Love Song with Narrative",
-            "payload": {
-                "project_blueprint": "standalone_song_mini",
-                "sound_profile": "indie_live_band",
-                "delivery_and_control": "balanced_studio",
-                "instrumental_only": False,
-                "user_narrative": "A love song for my partner Alex. We met at a book club discussing our favorite novels. They love autumn leaves and cozy sweaters. This is for our anniversary.",
-            },
-        },
-        {
-            "name": "Ad brand fast hook",
-            "payload": {
-                "project_blueprint": "ad_brand_fast_hook",
-                "sound_profile": "bright_pop_electro",
-                "delivery_and_control": "balanced_studio",
-                "instrumental_only": False,
-                "user_narrative": None,
-            },
-        }
-    ]
+    # Preset combinations loaded from prompt_test_cases.json -> "cases"
+    test_cases = load_test_data()["cases"]
 
     async with httpx.AsyncClient(timeout=60.0) as client:
         for i, test_case in enumerate(test_cases, 1):

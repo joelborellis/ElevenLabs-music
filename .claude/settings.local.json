@@ -4,7 +4,9 @@
       "Skill(skill-detection-test)",
       "WebFetch(domain:github.com)",
       "Bash(where claude)",
-      "Bash(claude update:*)"
+      "Bash(claude update:*)",
+      "Bash(python -c \"import ast, json; ast.parse\\(open\\('testing/test_prompt_endpoint.py',encoding='utf-8'\\).read\\(\\)\\); json.load\\(open\\('testing/prompt_test_cases.json',encoding='utf-8'\\)\\); print\\('OK: script parses and JSON is valid'\\)\")",
+      "WebFetch(domain:elevenlabs.io)"
     ]
   }
 }

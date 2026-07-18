@@ -44,38 +44,28 @@ Renders music from a composition plan using the ElevenLabs `compose_detailed` AP
 
 #### Request Body
 
-The composition plan is a flat list of `chunks`. Each chunk carries its own positive/negative
-styles, duration, optional lyrics/section marker (`text`), and context adherence.
+The endpoint renders from **either** a composition plan (`chunks`) **or** a text `prompt` —
+the two are **mutually exclusive** (matching the ElevenLabs `compose_detailed` contract). All
+other fields map directly to `compose_detailed` body parameters (with project defaults).
+
+**Plan mode** — a flat list of `chunks`, each with its own positive/negative styles, duration,
+optional lyrics/section marker (`text`), and context adherence:
 
 ```json
 {
+  "title": "Indie Sunrise",
   "chunks": [
     {
       "text": "[Intro]",
-      "positive_styles": [
-        "95 bpm",
-        "indie pop",
-        "clean electric guitar riff",
-        "minimal instrumentation"
-      ],
-      "negative_styles": [
-        "full band",
-        "vocals",
-        "heavy reverb"
-      ],
+      "positive_styles": ["95 bpm", "indie pop", "clean electric guitar riff"],
+      "negative_styles": ["full band", "vocals", "heavy reverb"],
       "duration_ms": 4000,
       "context_adherence": "high"
     },
     {
-      "text": "[Verse 1]\nEmpty street starts to bloom,\nchasing shadows from the room.",
-      "positive_styles": [
-        "95 bpm",
-        "warm male vocal",
-        "steady bassline"
-      ],
-      "negative_styles": [
-        "shouting"
-      ],
+      "text": "[Verse 1]\nEmpty street starts to bloom,",
+      "positive_styles": ["95 bpm", "warm male vocal", "steady bassline"],
+      "negative_styles": ["shouting"],
       "duration_ms": 7000,
       "context_adherence": "high"
     }
@@ -83,12 +73,36 @@ styles, duration, optional lyrics/section marker (`text`), and context adherence
 }
 ```
 
+**Prompt mode** — a text prompt plus optional length and pass-through params:
+
+```json
+{
+  "title": "Quick Hook",
+  "prompt": "An upbeat 30-second bright pop-electro ad hook at 120 BPM in E major.",
+  "music_length_ms": 30000,
+  "model_id": "music_v2",
+  "force_instrumental": true,
+  "output_format": "mp3_44100_128"
+}
+```
+
 #### Request Fields
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `title` | string \| null | No | Optional title used to name the output file |
-| `chunks` | array[Chunk] | No | List of chunks (sections) in the composition |
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `prompt` | string \| null | one of prompt/chunks | `null` | Text-to-music prompt. **Mutually exclusive with `chunks`.** |
+| `chunks` | array[Chunk] | one of prompt/chunks | `[]` | Composition plan sections. **Mutually exclusive with `prompt`.** |
+| `music_length_ms` | integer \| null | No | `null` | **Only valid with `prompt`.** Range 3000–600000 (3–600 s). |
+| `model_id` | string | No | `"music_v2"` | `"music_v1"` or `"music_v2"`. |
+| `force_instrumental` | boolean | No | `false` | Guarantee an instrumental result. |
+| `store_for_inpainting` | boolean | No | `false` | Store the song to allow later inpainting. |
+| `with_timestamps` | boolean | No | `false` | Return word-level timestamps. |
+| `sign_with_c2pa` | boolean | No | `false` | Sign the song with C2PA provenance. |
+| `output_format` | string \| null | No | `null` (API default) | e.g. `"mp3_44100_128"`, `"pcm_44100"`. |
+| `title` | string \| null | No | `null` | Local-only; names the output file. Not sent to ElevenLabs. |
+
+> `seed` and `respect_sections_durations` from the REST API are intentionally **not** exposed —
+> the pinned ElevenLabs SDK (2.58.0) does not support them.
 
 #### Chunk Fields
 
@@ -99,6 +113,12 @@ styles, duration, optional lyrics/section marker (`text`), and context adherence
 | `negative_styles` | array[string] | No | Styles to avoid in this chunk |
 | `duration_ms` | integer | Yes | Duration in milliseconds (min: 3000) |
 | `context_adherence` | string \| null | No | How strictly to adhere to surrounding chunks (e.g. `"high"`) |
+
+#### Validation Rules (return `422`)
+
+- Exactly one of `prompt` or `chunks` must be provided (not both, not neither).
+- `music_length_ms` may only be supplied together with `prompt`.
+- In plan mode, each chunk `duration_ms` must be ≥ 3000, and the total across chunks must be 3000–600000 ms.
 
 #### Response
 
@@ -257,21 +277,27 @@ After connecting, send a single JSON message to start rendering:
 
 #### Request Fields
 
+The `composition_plan` field carries a **full render request** (the same body as `POST /render`,
+see [Request Fields](#request-fields) above), so it supports **both** plan mode (`chunks`) and
+prompt mode (`prompt` + `music_length_ms`) plus all pass-through params (`model_id`,
+`force_instrumental`, `output_format`, etc.).
+
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `type` | `"render"` | Yes | Must be exactly `"render"` |
-| `composition_plan.title` | string \| null | No | Used for output filename |
-| `composition_plan.chunks` | Chunk[] | Yes | At least one chunk required |
-| `chunks[].text` | string | No | Section marker (e.g. `[Intro]`) and/or lyric lines |
-| `chunks[].positive_styles` | string[] | No | Styles to include in this chunk |
-| `chunks[].negative_styles` | string[] | No | Styles to avoid in this chunk |
-| `chunks[].duration_ms` | integer | Yes | Duration in ms (min: 3000) |
-| `chunks[].context_adherence` | string \| null | No | Adherence to surrounding chunks (e.g. `"high"`) |
+| `composition_plan` | RenderRequest | Yes | Full render request — provide **either** `chunks` **or** `prompt` (mutually exclusive) |
+
+> The field name is `composition_plan` for historical reasons, but it accepts the entire render
+> request, including prompt-mode fields. Example (prompt mode):
+> ```json
+> { "type": "render", "composition_plan": { "title": "Quick Hook", "prompt": "An upbeat 30-second hook", "music_length_ms": 30000 } }
+> ```
 
 #### Validation Rules
 
-- Total duration: 3,000ms - 600,000ms (3 seconds to 10 minutes)
-- Each chunk: minimum 3,000ms
+- Provide exactly one of `prompt` or `chunks` (not both, not neither).
+- `music_length_ms` only with `prompt` (range 3,000–600,000 ms).
+- Plan mode: total duration 3,000–600,000 ms (3 s–10 min); each chunk ≥ 3,000 ms.
 
 #### Server Messages
 
@@ -351,8 +377,8 @@ Sent when an error occurs:
 
 | Code | Cause |
 |------|-------|
-| `INVALID_REQUEST` | Malformed JSON or missing `type`/`composition_plan` |
-| `VALIDATION_ERROR` | Invalid composition plan (no chunks, duration too short/long) |
+| `INVALID_REQUEST` | Message wasn't valid JSON, or the envelope is malformed (e.g. wrong/missing `type`) |
+| `VALIDATION_ERROR` | The render request failed validation (empty, both `prompt` and `chunks`, `music_length_ms` without a prompt, or a chunk duration too short/long) |
 | `SERVER_ERROR` | ElevenLabs API failure or unexpected server error |
 
 #### JavaScript/TypeScript Example

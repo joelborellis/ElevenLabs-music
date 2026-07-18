@@ -25,7 +25,7 @@ tracer = trace.get_tracer(__name__)
     status_code=status.HTTP_200_OK,
     summary="Generate music prompt",
     description="""
-    Generate a high-quality music prompt for ElevenLabs music-1 model based on
+    Generate a high-quality music prompt for ElevenLabs music_v2 model based on
     three preset selections: project blueprint, sound profile, and delivery & control.
     
     The generated prompt is ready to be sent directly to the ElevenLabs music generation API.
@@ -86,7 +86,7 @@ async def generate_prompt(
     This endpoint uses the three-choice wizard approach where users select from
     predefined presets for project type, sound, and delivery preferences. The
     system then uses an AI agent with expert music direction knowledge to
-    generate a comprehensive, paste-ready prompt for the ElevenLabs music-1 model.
+    generate a comprehensive, paste-ready prompt for the ElevenLabs music_v2 model.
     
     Args:
         request_data: The prompt generation request with preset selections

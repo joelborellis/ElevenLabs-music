@@ -1,6 +1,6 @@
 # ElevenLabs Music Prompt Generator API
 
-A production-ready FastAPI application that generates high-quality music prompts for the ElevenLabs music-1 model using OpenAI Agents.
+A production-ready FastAPI application that generates high-quality music prompts for the ElevenLabs music_v2 model using OpenAI Agents.
 
 ## Features
 
