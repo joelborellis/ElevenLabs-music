@@ -7,7 +7,6 @@ import re
 import uuid
 import asyncio
 import logging
-from pathlib import Path
 from typing import Optional, Callable, Awaitable
 from dataclasses import dataclass
 
@@ -15,6 +14,7 @@ from elevenlabs.client import ElevenLabs
 from dotenv import load_dotenv
 
 from models.render import RenderRequest
+from services.storage import StorageBackend, get_storage_backend
 
 load_dotenv()
 
@@ -22,6 +22,36 @@ logger = logging.getLogger(__name__)
 
 # Type alias for progress callback function
 ProgressCallback = Callable[[str, int, str], Awaitable[None]]
+
+
+def _content_type_for(output_format: Optional[str]) -> str:
+    """Best-effort MIME type for an ElevenLabs ``output_format`` (default mp3)."""
+    if not output_format:
+        return "audio/mpeg"
+    fmt = output_format.lower()
+    if fmt.startswith("mp3"):
+        return "audio/mpeg"
+    if fmt.startswith("pcm"):
+        return "audio/pcm"
+    if fmt.startswith("opus"):
+        return "audio/opus"
+    if fmt.startswith("wav"):
+        return "audio/wav"
+    return "audio/mpeg"
+
+
+def _duration_ms_from(composition_plan: Optional[dict], request: RenderRequest) -> Optional[int]:
+    """Derive total duration in ms from a composition plan or the request."""
+    if composition_plan:
+        chunks = composition_plan.get("chunks") or []
+        total = sum(c.get("duration_ms", 0) for c in chunks)
+        if total > 0:
+            return total
+    if request.chunks:
+        total = sum(c.duration_ms for c in request.chunks if c.duration_ms)
+        if total > 0:
+            return total
+    return request.music_length_ms
 
 
 def _validate_composition_plan(composition_plan: dict) -> tuple[list, int]:
@@ -84,31 +114,33 @@ def _sanitize_filename(title: str) -> str:
 @dataclass
 class RenderResult:
     """Result of a music render operation."""
+    id: str
     filename: str
-    file_path: str
+    blob_key: str
+    content_type: str
     file_size_bytes: int
+    blob_url: Optional[str] = None
+    duration_ms: Optional[int] = None
     composition_plan: Optional[dict] = None
     song_metadata: Optional[dict] = None
 
 
 class RenderService:
     """Service for rendering music from composition plans."""
-    
-    def __init__(self):
-        """Initialize the render service with ElevenLabs client."""
+
+    def __init__(self, storage: Optional[StorageBackend] = None):
+        """Initialize the render service with ElevenLabs client and storage backend."""
         api_key = os.getenv("ELEVENLABS_API_KEY")
         if not api_key:
             raise RuntimeError(
                 "ELEVENLABS_API_KEY environment variable is not set. "
                 "Please add it to your .env file or set it in your environment."
             )
-        
+
         self.client = ElevenLabs(api_key=api_key)
-        
-        # Create output directory for rendered music
-        self.output_dir = Path(__file__).parent.parent / "output" / "music"
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-        logger.info(f"Render output directory: {self.output_dir}")
+
+        # Storage backend for rendered audio (local filesystem or Azure Blob).
+        self.storage = storage or get_storage_backend()
     
     def render(self, request: RenderRequest) -> RenderResult:
         """
@@ -161,7 +193,7 @@ class RenderService:
                     logger.info(f"  {attr}: <error accessing: {e}>")
         logger.info("=" * 60)
 
-        # Determine output filename
+        # Determine output filename (used as the storage key)
         if request.title:
             output_filename = _sanitize_filename(request.title)
             logger.info(f"Using title-based filename: {output_filename}")
@@ -169,27 +201,30 @@ class RenderService:
             output_filename = track_details.filename
             logger.info(f"Using ElevenLabs filename: {output_filename}")
 
-        # Save the audio file
-        output_path = self.output_dir / output_filename
-        with open(output_path, "wb") as f:
-            f.write(track_details.audio)
-        
-        file_size = output_path.stat().st_size
-        logger.info(f"Saved audio to: {output_path} ({file_size} bytes)")
-        
+        # Save the audio via the storage backend (local filesystem or Azure Blob)
+        content_type = _content_type_for(request.output_format)
+        audio_bytes = track_details.audio
+        file_size = len(audio_bytes)
+        blob_url = self.storage.save(output_filename, audio_bytes, content_type)
+        logger.info(f"Saved audio to storage key '{output_filename}' ({file_size} bytes)")
+
         # Extract metadata from the response
         json_data = track_details.json if hasattr(track_details, 'json') else None
         composition_plan_result = None
         song_metadata = None
-        
+
         if json_data:
             composition_plan_result = json_data.get('composition_plan')
             song_metadata = json_data.get('song_metadata')
-        
+
         return RenderResult(
+            id=str(uuid.uuid4()),
             filename=output_filename,
-            file_path=str(output_path),
+            blob_key=output_filename,
+            content_type=content_type,
             file_size_bytes=file_size,
+            blob_url=blob_url,
+            duration_ms=_duration_ms_from(composition_plan_result, request),
             composition_plan=composition_plan_result,
             song_metadata=song_metadata,
         )
@@ -267,7 +302,7 @@ class RenderService:
         # Stage 3: Processing response (progress to 75%)
         await increment_to(75, "processing", "Processing response...")
 
-        # Stage 4: Determine filename
+        # Stage 4: Determine filename (used as the storage key)
         if request.title:
             output_filename = _sanitize_filename(request.title)
             logger.info(f"Using title-based filename: {output_filename}")
@@ -275,15 +310,18 @@ class RenderService:
             output_filename = track_details.filename
             logger.info(f"Using ElevenLabs filename: {output_filename}")
 
-        # Stage 5: Save file (progress to 90%)
+        # Stage 5: Save file (progress to 90%) — uploading to storage backend.
+        # The Azure SDK client is synchronous, so run it in a thread to avoid
+        # blocking the event loop (same pattern as the compose_detailed call).
         await increment_to(90, "saving", "Saving audio file...")
 
-        output_path = self.output_dir / output_filename
-        with open(output_path, "wb") as f:
-            f.write(track_details.audio)
-
-        file_size = output_path.stat().st_size
-        logger.info(f"Saved audio to: {output_path} ({file_size} bytes)")
+        content_type = _content_type_for(request.output_format)
+        audio_bytes = track_details.audio
+        file_size = len(audio_bytes)
+        blob_url = await asyncio.to_thread(
+            self.storage.save, output_filename, audio_bytes, content_type
+        )
+        logger.info(f"Saved audio to storage key '{output_filename}' ({file_size} bytes)")
 
         # Stage 6: Extract metadata (progress to 95%)
         await increment_to(95, "extracting", "Extracting metadata...")
@@ -300,27 +338,24 @@ class RenderService:
         await progress_callback("complete", 100, "Render complete!")
 
         return RenderResult(
+            id=str(uuid.uuid4()),
             filename=output_filename,
-            file_path=str(output_path),
+            blob_key=output_filename,
+            content_type=content_type,
             file_size_bytes=file_size,
+            blob_url=blob_url,
+            duration_ms=_duration_ms_from(composition_plan_result, request),
             composition_plan=composition_plan_result,
             song_metadata=song_metadata,
         )
 
-    def get_file_path(self, filename: str) -> Optional[Path]:
+    def resolve_key(self, filename: str) -> Optional[str]:
+        """Return the storage key for ``filename`` if it exists, else None.
+
+        The storage key is the filename itself (see ``render``). This replaces the
+        old filesystem-path lookup so it works uniformly for local and Azure.
         """
-        Get the full path to a rendered audio file.
-        
-        Args:
-            filename: The filename of the audio file
-            
-        Returns:
-            Path to the file if it exists, None otherwise
-        """
-        file_path = self.output_dir / filename
-        if file_path.exists():
-            return file_path
-        return None
+        return filename if self.storage.exists(filename) else None
 
 
 # Singleton instance

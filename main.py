@@ -34,8 +34,9 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.exceptions import RequestValidationError
-from pydantic import BaseModel, ConfigDict
-from pydantic_settings import BaseSettings
+from pydantic import BaseModel
+
+from config import settings
 
 # OpenTelemetry imports
 from opentelemetry import trace, metrics
@@ -68,33 +69,18 @@ logger = logging.getLogger(__name__)
 # CONFIGURATION
 # ============================================================================
 
-class Settings(BaseSettings):
-    """Application settings with environment variable support."""
-    
-    model_config = ConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"  # Ignore extra fields in .env that aren't defined here
+# Application settings live in config.py (imported above) so that service,
+# storage, and database modules can share them without an import cycle.
+
+# Fail fast on misconfiguration: if the Azure storage backend is selected, we
+# need either an account URL (managed identity) or a connection string.
+if settings.storage_backend == "azure" and not (
+    settings.azure_storage_account_url or settings.azure_storage_connection_string
+):
+    raise RuntimeError(
+        "STORAGE_BACKEND=azure requires AZURE_STORAGE_ACCOUNT_URL "
+        "(managed identity) or AZURE_STORAGE_CONNECTION_STRING to be set."
     )
-    
-    app_name: str = "fastapi-starter"
-    app_version: str = "1.0.0"
-    environment: str = "development"
-    
-    # CORS settings
-    cors_origins: list[str] = [
-        "http://localhost:3000",
-        "http://localhost:5173",  # Vite dev server
-        "http://localhost:8000"
-    ]
-    
-    # OpenTelemetry settings
-    otel_enabled: bool = True
-    otel_exporter_endpoint: str = "http://localhost:4317"
-    otel_service_name: str = "fastapi-app"
-
-
-settings = Settings()
 
 
 # ============================================================================
@@ -174,14 +160,10 @@ error_counter = meter.create_counter(
 # ============================================================================
 
 async def check_database() -> dict:
-    """
-    Check database connectivity.
-    
-    Replace this with your actual database check:
-    Example: await db.execute("SELECT 1")
-    """
-    # Simulated check - implement your actual database check
-    return {"status": "healthy", "latency_ms": 5}
+    """Check database connectivity with a lightweight SELECT 1."""
+    from db.database import check_db_health
+
+    return await check_db_health()
 
 
 async def check_cache() -> dict:
@@ -229,32 +211,29 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     
     # Initialize OpenTelemetry
     setup_telemetry()
-    
-    # Add your startup logic here:
-    # - Database connection pools
-    # - Cache connections (Redis, etc.)
-    # - Load ML models
-    # - Initialize external service clients
-    # Example:
-    # app.state.db = await init_database()
-    # app.state.redis = await init_redis()
-    
+
+    # Initialize the database engine. In development we also create tables so a
+    # fresh SQLite/dev database works out of the box; production schema is managed
+    # by Alembic migrations run as a deploy step.
+    from db.database import init_db, dispose_db
+
+    await init_db(create_all=(settings.environment == "development"))
+
+    # Initialize the storage backend eagerly so misconfiguration fails fast at
+    # startup (e.g. Azure container creation / auth).
+    from services.storage import get_storage_backend
+
+    get_storage_backend()
+
     logger.info("Application startup complete")
-    
+
     yield
-    
+
     # ===== SHUTDOWN =====
     logger.info("Initiating graceful shutdown...")
-    
-    # Add your shutdown logic here:
-    # - Close database connections
-    # - Close cache connections
-    # - Flush metrics/traces
-    # - Save state if needed
-    # Example:
-    # await app.state.db.close()
-    # await app.state.redis.close()
-    
+
+    await dispose_db()
+
     logger.info("Application shutdown complete")
 
 

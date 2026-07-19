@@ -5,16 +5,27 @@ API routes for music rendering.
 import logging
 import uuid
 from datetime import datetime
-from pathlib import Path
 
-from fastapi import APIRouter, Request, status, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi import (
+    APIRouter,
+    Request,
+    status,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+    Depends,
+)
+from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
+from sqlalchemy.ext.asyncio import AsyncSession
 from opentelemetry import trace
 
 from models.render import RenderRequest, RenderResponse
 from models.websocket import ProgressMessage, ResultMessage, ErrorMessage, RenderWebSocketRequest
 from services.render_service import get_render_service
+from services.storage import get_storage_backend
+from services import render_repository as repo
+from db.database import get_db_session, get_sessionmaker
 
 
 logger = logging.getLogger(__name__)
@@ -82,26 +93,28 @@ tracer = trace.get_tracer(__name__)
 async def render_music(
     request_data: RenderRequest,
     request: Request,
+    session: AsyncSession = Depends(get_db_session),
 ) -> RenderResponse:
     """
     Render music from a composition plan using the ElevenLabs API.
-    
+
     Args:
         request_data: The composition plan to render
         request: The FastAPI request object (injected)
-    
+        session: Database session (injected)
+
     Returns:
         A response containing metadata about the generated audio file
-    
+
     Raises:
         HTTPException: If rendering fails
     """
     request_id = getattr(request.state, "request_id", "unknown")
-    
+
     with tracer.start_as_current_span("render_music") as span:
         span.set_attribute("request_id", request_id)
         span.set_attribute("chunks_count", len(request_data.chunks))
-        
+
         try:
             mode = "prompt" if (request_data.prompt and request_data.prompt.strip()) else "plan"
             logger.info(
@@ -113,27 +126,34 @@ async def render_music(
             # parameters are passed through from the validated request)
             render_service = get_render_service()
             result = render_service.render(request_data)
-            
+
+            # Persist the render metadata (audio bytes already in storage)
+            await repo.create_render(session, result, request_data, request_id)
+
+            span.set_attribute("render_id", result.id)
             span.set_attribute("filename", result.filename)
             span.set_attribute("file_size_bytes", result.file_size_bytes)
-            
+
             logger.info(
-                f"Render complete - request_id={request_id}, "
+                f"Render complete - request_id={request_id}, id={result.id}, "
                 f"filename={result.filename}, size={result.file_size_bytes}"
             )
-            
+
             return RenderResponse(
+                id=result.id,
                 filename=result.filename,
-                file_path=result.file_path,
-                download_url=f"/render/download/{result.filename}",
-                content_type="audio/mpeg",
+                file_path=result.blob_url,
+                download_url=f"/render/download/{result.id}",
+                stream_url=f"/render/stream/{result.id}",
+                content_type=result.content_type,
                 file_size_bytes=result.file_size_bytes,
+                duration_ms=result.duration_ms,
                 composition_plan=result.composition_plan,
                 song_metadata=result.song_metadata,
                 request_id=request_id,
                 timestamp=datetime.utcnow().isoformat(),
             )
-            
+
         except ValueError as e:
             # Validation errors should return 422
             logger.warning(
@@ -156,100 +176,92 @@ async def render_music(
             )
 
 
+async def _resolve_render(session: AsyncSession, identifier: str):
+    """Resolve a render row by id, falling back to filename for backward compat.
+
+    Returns the ORM row, or None if nothing matches.
+    """
+    row = await repo.get_by_id(session, identifier)
+    if row is None:
+        row = await repo.get_by_filename(session, identifier)
+    return row
+
+
 @router.get(
-    "/download/{filename}",
+    "/download/{identifier}",
     summary="Download rendered audio file",
-    description="Download a previously rendered audio file by filename.",
+    description="Download a rendered audio file by render id (or filename for backward compat).",
     responses={
-        200: {
-            "description": "Audio file",
-            "content": {"audio/mpeg": {}}
-        },
-        404: {"description": "File not found"}
-    }
+        200: {"description": "Audio file", "content": {"audio/mpeg": {}}},
+        404: {"description": "File not found"},
+    },
 )
-async def download_audio(filename: str):
-    """
-    Download a rendered audio file.
-    
-    Args:
-        filename: The filename of the audio to download
-        
-    Returns:
-        The audio file as a streaming response
-        
-    Raises:
-        HTTPException: If the file is not found
-    """
-    render_service = get_render_service()
-    file_path = render_service.get_file_path(filename)
-    
-    if file_path is None:
+async def download_audio(
+    identifier: str,
+    session: AsyncSession = Depends(get_db_session),
+):
+    """Download a rendered audio file by render id (or legacy filename)."""
+    row = await _resolve_render(session, identifier)
+    if row is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Audio file not found: {filename}"
+            detail=f"Render not found: {identifier}",
         )
-    
-    return FileResponse(
-        path=file_path,
-        media_type="audio/mpeg",
-        filename=filename,
+
+    storage = get_storage_backend()
+    if not storage.exists(row.blob_key):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Audio object missing from storage: {row.blob_key}",
+        )
+
+    return StreamingResponse(
+        storage.open_stream(row.blob_key),
+        media_type=row.content_type,
         headers={
-            "Content-Disposition": f"attachment; filename={filename}",
+            "Content-Length": str(row.file_size_bytes),
+            "Content-Disposition": f"attachment; filename={row.filename}",
             "Accept-Ranges": "bytes",
-        }
+        },
     )
 
 
 @router.get(
-    "/stream/{filename}",
+    "/stream/{identifier}",
     summary="Stream rendered audio file",
-    description="Stream a previously rendered audio file for playback.",
+    description="Stream a rendered audio file for playback by render id (or filename).",
     responses={
-        200: {
-            "description": "Audio stream",
-            "content": {"audio/mpeg": {}}
-        },
-        404: {"description": "File not found"}
-    }
+        200: {"description": "Audio stream", "content": {"audio/mpeg": {}}},
+        404: {"description": "File not found"},
+    },
 )
-async def stream_audio(filename: str):
-    """
-    Stream a rendered audio file for playback.
-    
-    Args:
-        filename: The filename of the audio to stream
-        
-    Returns:
-        The audio file as a streaming response suitable for playback
-        
-    Raises:
-        HTTPException: If the file is not found
-    """
-    render_service = get_render_service()
-    file_path = render_service.get_file_path(filename)
-    
-    if file_path is None:
+async def stream_audio(
+    identifier: str,
+    session: AsyncSession = Depends(get_db_session),
+):
+    """Stream a rendered audio file for playback by render id (or legacy filename)."""
+    row = await _resolve_render(session, identifier)
+    if row is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Audio file not found: {filename}"
+            detail=f"Render not found: {identifier}",
         )
-    
-    def iterfile():
-        with open(file_path, "rb") as f:
-            while chunk := f.read(8192):
-                yield chunk
-    
-    file_size = file_path.stat().st_size
-    
+
+    storage = get_storage_backend()
+    if not storage.exists(row.blob_key):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Audio object missing from storage: {row.blob_key}",
+        )
+
     return StreamingResponse(
-        iterfile(),
-        media_type="audio/mpeg",
+        storage.open_stream(row.blob_key),
+        media_type=row.content_type,
         headers={
-            "Content-Length": str(file_size),
+            "Content-Length": str(row.file_size_bytes),
             "Accept-Ranges": "bytes",
-            "Content-Disposition": f"inline; filename={filename}",
-        }
+            "Content-Disposition": f"inline; filename={row.filename}",
+        },
     )
 
 
@@ -376,14 +388,22 @@ async def render_websocket(websocket: WebSocket):
             progress_callback=send_progress
         )
 
+        # Persist the render metadata (WebSocket can't use Depends for a
+        # per-message session, so open one explicitly).
+        sessionmaker = get_sessionmaker()
+        async with sessionmaker() as session:
+            await repo.create_render(session, result, render_request, request_id)
+
         # Build and send final response
         response = RenderResponse(
+            id=result.id,
             filename=result.filename,
-            file_path=result.file_path,
-            download_url=f"/render/download/{result.filename}",
-            stream_url=f"/render/stream/{result.filename}",
-            content_type="audio/mpeg",
+            file_path=result.blob_url,
+            download_url=f"/render/download/{result.id}",
+            stream_url=f"/render/stream/{result.id}",
+            content_type=result.content_type,
             file_size_bytes=result.file_size_bytes,
+            duration_ms=result.duration_ms,
             composition_plan=result.composition_plan,
             song_metadata=result.song_metadata,
             request_id=request_id,

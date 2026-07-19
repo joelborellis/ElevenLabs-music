@@ -155,14 +155,18 @@ class RenderRequest(BaseModel):
 
 class RenderResponse(BaseModel):
     """Response model for the render endpoint."""
-    
+
+    id: str = Field(
+        ...,
+        description="Unique render identifier (primary handle for download/stream)"
+    )
     filename: str = Field(
         ...,
         description="The filename of the generated audio file"
     )
-    file_path: str = Field(
-        ...,
-        description="The local path where the file was saved"
+    file_path: Optional[str] = Field(
+        default=None,
+        description="Canonical storage URL/URI where the audio was saved (blob URL or file URI)"
     )
     download_url: str = Field(
         ...,
@@ -179,6 +183,10 @@ class RenderResponse(BaseModel):
     file_size_bytes: int = Field(
         ...,
         description="Size of the audio file in bytes"
+    )
+    duration_ms: Optional[int] = Field(
+        default=None,
+        description="Total duration of the generated audio in milliseconds"
     )
     composition_plan: Optional[dict] = Field(
         default=None,

@@ -13,6 +13,10 @@ wheels/
 # Generated audio output (runtime)
 /output/
 
+# Local SQLite database (dev only)
+/data/
+*.db
+
 # Test runtime artifacts
 testing/generated_prompt.json
 testing/generated_comp_plan.json
