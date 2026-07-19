@@ -1,0 +1,29 @@
+# Version control / IDE
+.git
+.gitignore
+.claude/
+.vscode/
+.idea/
+
+# Python caches / build artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+wheels/
+
+# Virtual environment (rebuilt inside the image)
+.venv/
+
+# Secrets and local runtime state — must never enter the image
+.env
+.env.*
+data/
+*.db
+output/
+testing/music/
+
+# Docs / plans not needed at runtime
+*.md
+!README.md
