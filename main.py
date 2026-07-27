@@ -50,7 +50,7 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 
 # Application routers
-from routers import prompt_router, plan_router, render_router
+from routers import prompt_router, plan_router, render_router, finetunes_router
 
 
 # ============================================================================
@@ -294,6 +294,9 @@ app.include_router(plan_router)
 
 # Include the music render router
 app.include_router(render_router)
+
+# Include the finetunes listing router
+app.include_router(finetunes_router)
 
 
 # ============================================================================

@@ -16,7 +16,12 @@ class RenderRequest(BaseModel):
     API contract. Every other field maps directly to a ``compose_detailed`` body
     parameter (with project-specific defaults) so all supported options can be
     passed through. ``seed`` and ``respect_sections_durations`` are intentionally
-    omitted because the pinned ElevenLabs SDK (2.58.0) does not support them.
+    omitted (both are ``music_v1``-oriented and the SDK's custom multipart
+    wrapper does not forward them).
+
+    Note: the SDK's ``MusicClient.compose_detailed`` wrapper silently drops
+    ``finetune_id``/``finetune_strength``; ``RenderService`` routes around it via
+    the raw client when either is set (see ``services/render_service.py``).
     """
 
     # --- Generation source (mutually exclusive) ---
@@ -41,6 +46,18 @@ class RenderRequest(BaseModel):
     model_id: str = Field(
         default="music_v2",
         description="ElevenLabs generation model: 'music_v1' or 'music_v2'."
+    )
+    finetune_id: Optional[str] = Field(
+        default=None,
+        description="ID of an ElevenLabs finetune to steer the generation. "
+                    "Works with both prompt and composition-plan modes."
+    )
+    finetune_strength: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="How strongly the finetune influences generation (0.0-1.0, "
+                    "default 1.0 on the API). Only meaningful when 'finetune_id' is set."
     )
     force_instrumental: bool = Field(
         default=False,
@@ -83,6 +100,8 @@ class RenderRequest(BaseModel):
             raise ValueError("Provide either 'prompt' or 'chunks'.")
         if self.music_length_ms is not None and not has_prompt:
             raise ValueError("'music_length_ms' can only be used together with 'prompt'.")
+        if self.finetune_strength is not None and not self.finetune_id:
+            raise ValueError("'finetune_strength' can only be used together with 'finetune_id'.")
 
         return self
 
@@ -103,6 +122,13 @@ class RenderRequest(BaseModel):
 
         if self.output_format is not None:
             kwargs["output_format"] = self.output_format
+
+        # Finetune steering (optional). finetune_strength is only meaningful
+        # alongside finetune_id (enforced by the validator).
+        if self.finetune_id is not None:
+            kwargs["finetune_id"] = self.finetune_id
+            if self.finetune_strength is not None:
+                kwargs["finetune_strength"] = self.finetune_strength
 
         if self.prompt and self.prompt.strip():
             kwargs["prompt"] = self.prompt

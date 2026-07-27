@@ -56,6 +56,9 @@ tracer = trace.get_tracer(__name__)
     - **model_id** (default "music_v2"), **force_instrumental**,
       **store_for_inpainting**, **with_timestamps**, **sign_with_c2pa**,
       **output_format**
+    - **finetune_id**: ID of an ElevenLabs finetune to steer generation
+      (works in both prompt and plan modes). **finetune_strength** (0.0-1.0)
+      optionally softens its influence.
     - **title**: local-only, used to name the saved output file (not sent to
       ElevenLabs).
 

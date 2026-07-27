@@ -373,7 +373,7 @@ wheels = [
 
 [[package]]
 name = "elevenlabs"
-version = "2.58.0"
+version = "2.59.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -383,9 +383,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c0/f1/ffb45244b83bd6a2df5c3903b9c045f77659c6a591ee88881770d10762a2/elevenlabs-2.58.0.tar.gz", hash = "sha256:3281f0f6271dd8a40466a2d7cdd4bc3721937109fc2917248e87dbde3b7832a7", size = 686610, upload-time = "2026-07-13T09:33:57.448Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f4/54/198bf4ab4ba88455466963c733473fbab6b3c34910807c71b412c4ee7220/elevenlabs-2.59.0.tar.gz", hash = "sha256:b05cc41636bef94172e1b9343b650f5cc5e543fc88afe06c12217e0120fd1238", size = 717248, upload-time = "2026-07-22T10:13:24.653Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9d/2e/761c8c625a8c67a1c027005f56ebd1b9f14e2f974aec0558e94c3e5bca5e/elevenlabs-2.58.0-py3-none-any.whl", hash = "sha256:e64417e585b8f88ff5ca95bb41e2723c1634cf0424b971b6b7283960de633808", size = 1849831, upload-time = "2026-07-13T09:33:55.62Z" },
+    { url = "https://files.pythonhosted.org/packages/57/49/6ed4f12b1451714972d38ce1c0df446414acdd08f08336fc298901b68e95/elevenlabs-2.59.0-py3-none-any.whl", hash = "sha256:cdd048dc380733f81ee512baa3e9b333c11f4f466aa84301b946fe5354a3b6da", size = 1902619, upload-time = "2026-07-22T10:13:22.582Z" },
 ]
 
 [[package]]
@@ -426,7 +426,7 @@ requires-dist = [
     { name = "asyncpg", specifier = ">=0.31.0" },
     { name = "azure-identity", specifier = ">=1.25.3" },
     { name = "azure-storage-blob", specifier = ">=12.30.0" },
-    { name = "elevenlabs", specifier = ">=2.58.0" },
+    { name = "elevenlabs", specifier = ">=2.59.0" },
     { name = "fastapi", specifier = ">=0.127.0" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "openai", specifier = ">=2.14.0" },

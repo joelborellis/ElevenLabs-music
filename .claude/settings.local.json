@@ -8,7 +8,11 @@
       "Bash(python -c \"import ast, json; ast.parse\\(open\\('testing/test_prompt_endpoint.py',encoding='utf-8'\\).read\\(\\)\\); json.load\\(open\\('testing/prompt_test_cases.json',encoding='utf-8'\\)\\); print\\('OK: script parses and JSON is valid'\\)\")",
       "WebFetch(domain:elevenlabs.io)",
       "PowerShell(uv add azure-storage-blob azure-identity sqlalchemy asyncpg alembic)",
-      "PowerShell(uv add --dev aiosqlite)"
+      "PowerShell(uv add --dev aiosqlite)",
+      "Bash(curl -s \"https://api.elevenlabs.io/v1/music/finetunes\" -H \"xi-api-key: sk_076f0a1c51059fba2e39ca693c2688525956a988a3990386\" -o finetunes.json -w \"HTTP %{http_code}\\\\n\")",
+      "Bash(python -m json.tool finetunes.json finetunes.json)",
+      "PowerShell(uv run python testing/test_finetune_compose.py)",
+      "Bash(uv run python -c ' *)"
     ]
   }
 }

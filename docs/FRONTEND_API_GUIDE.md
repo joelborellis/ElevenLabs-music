@@ -4,6 +4,10 @@ This document describes every backend endpoint the frontend can use — inputs, 
 
 > Source of truth: this reflects the FastAPI backend in this repo. A live, always-current schema is also available at **`/openapi.json`** and interactive docs at **`/docs`** when the server is running — you can generate a typed client from the former.
 
+> **Companion docs:**
+> - [`FRONTEND_FINETUNES.md`](./FRONTEND_FINETUNES.md) — the `GET /finetunes` endpoint and the optional `finetune_id` / `finetune_strength` fields on `/render`.
+> - [`FRONTEND_API_CHANGES_STORAGE.md`](./FRONTEND_API_CHANGES_STORAGE.md) — render `id`s and Blob/DB storage (supersedes the `/render` response shape below).
+
 ---
 
 ## 1. Basics
