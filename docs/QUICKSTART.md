@@ -57,7 +57,8 @@ curl -X POST http://localhost:8000/prompt \
   -H "Content-Type: application/json" \
   -d '{
     "project_blueprint": "ad_brand_fast_hook",
-    "sound_profile": "bright_pop_electro",
+    "sound_profile": "upbeat_pop",
+    "finetune_id": "gduoyhnzn5nvb246gg7i",
     "delivery_and_control": "balanced_studio"
   }'
 ```
@@ -119,7 +120,8 @@ A response like:
   "timestamp": "2025-12-22T10:30:00Z",
   "input_parameters": {
     "project_blueprint": "meditation_sleep",
-    "sound_profile": "lofi_cozy",
+    "sound_profile": "lofi_pulse",
+    "finetune_id": "sqwy9yr9rgik4fjq83lq",
     "delivery_and_control": "exploratory_iterate",
     "instrumental_only": true
   }
@@ -178,12 +180,20 @@ print(f"Saved: {result['filename']}")
 - `meditation_sleep` - Meditation/wellness track
 - `standalone_song_mini` - Mini-song (90 seconds)
 
-### Sound Profile (How it sounds)
-- `bright_pop_electro` - Uplifting electronic
-- `dark_trap_night` - Dark trap/hip-hop
-- `lofi_cozy` - Cozy lo-fi beats
-- `epic_cinematic` - Epic orchestral
-- `indie_live_band` - Indie live band
+### Sound Profile (How it sounds) — not a preset
+
+Genre comes from an ElevenLabs finetune, not a fixed list. Fetch the options:
+
+```bash
+curl "http://localhost:8000/finetunes?model_id=music_v2"
+```
+
+Pick one and send **both** fields on `/prompt`:
+- `sound_profile` - a slug of its name, e.g. `indie_dance` (any slug is accepted)
+- `finetune_id` - its `id`, e.g. `aslj0pdvdods2agammwb` (**required** — omitting it is a `422`)
+
+The server looks up the finetune's genre and tags and the agent writes the brief from those. Pass the
+same `finetune_id` to `/render` so the audio is generated in that style too.
 
 ### Delivery & Control (How it's made)
 - `exploratory_iterate` - Exploratory approach

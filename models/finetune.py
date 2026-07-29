@@ -31,6 +31,27 @@ class FinetuneSummary(BaseModel):
     failure_reason: Optional[str] = Field(default=None, description="Reason for failure, if any.")
 
 
+class FinetuneContext(BaseModel):
+    """The subset of a finetune's metadata handed to the prompt generator agent.
+
+    Deliberately narrow: the agent derives genre, tempo, groove and instrumentation
+    from these three fields, and nothing else about the finetune should reach it.
+    """
+
+    name: Optional[str] = Field(default=None, description="Human-readable finetune name.")
+    primary_genre: Optional[str] = Field(default=None, description="Primary genre label.")
+    tags: list[str] = Field(default_factory=list, description="Descriptive genre/style tags.")
+
+    @classmethod
+    def from_summary(cls, summary: "FinetuneSummary") -> "FinetuneContext":
+        """Narrow a full FinetuneSummary down to the agent-facing fields."""
+        return cls(
+            name=summary.name,
+            primary_genre=summary.primary_genre,
+            tags=summary.tags,
+        )
+
+
 class FinetuneListResponse(BaseModel):
     """List of finetunes available to use with /render."""
 

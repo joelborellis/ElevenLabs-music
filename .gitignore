@@ -21,3 +21,6 @@ wheels/
 testing/generated_prompt.json
 testing/generated_comp_plan.json
 testing/music/
+
+# Local sample payloads (contain personal details)
+prompts/sample_post_prompt.json

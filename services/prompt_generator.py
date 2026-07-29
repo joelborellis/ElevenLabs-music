@@ -2,6 +2,8 @@
 Service layer for music prompt generation using OpenAI Agents.
 """
 
+import asyncio
+import json
 import logging
 import os
 from pathlib import Path
@@ -13,10 +15,12 @@ load_dotenv()
 
 from agents import Agent, Runner, WebSearchTool, ToolCallItem, ToolCallOutputItem
 
+from models.finetune import FinetuneContext
 from models.prompt import (
     PromptGenerationRequest,
     AgentPromptOutput,
 )
+from services.finetune_service import get_finetune_service
 
 
 logger = logging.getLogger(__name__)
@@ -27,7 +31,8 @@ class PromptGeneratorService:
     Service for generating music prompts using OpenAI Agents.
     
     This service loads the system prompt instructions and uses them to generate
-    high-quality music prompts based on the user's three-choice wizard selections.
+    high-quality music prompts from the user's wizard selections (project blueprint,
+    delivery & control) plus the finetune that will render the track.
     """
     
     def __init__(self, instructions_path: Optional[Path] = None):
@@ -97,37 +102,84 @@ class PromptGeneratorService:
         
         return self._agent
     
+    async def _resolve_finetune_context(
+        self,
+        finetune_id: str,
+    ) -> Optional[FinetuneContext]:
+        """
+        Resolve a finetune id into the genre metadata the agent derives from.
+
+        Best-effort by design: if the finetune is gone, ElevenLabs is unreachable, or
+        no ELEVENLABS_API_KEY is configured, we return None and the agent infers the
+        genre from the sound_profile slug alone. /prompt must keep working without an
+        ElevenLabs key, as it does today.
+
+        Args:
+            finetune_id: The finetune id from the request.
+
+        Returns:
+            A FinetuneContext, or None if the finetune could not be resolved.
+        """
+        try:
+            service = get_finetune_service()
+            # The SDK call is blocking; keep it off the event loop.
+            summary = await asyncio.to_thread(service.get_finetune, finetune_id)
+        except Exception as e:
+            # Includes the RuntimeError raised when ELEVENLABS_API_KEY is unset.
+            logger.warning(f"Finetune context unavailable for {finetune_id}: {e}")
+            return None
+
+        if summary is None:
+            logger.warning(
+                f"No finetune metadata for {finetune_id}; "
+                f"agent will infer genre from the slug alone"
+            )
+            return None
+
+        return FinetuneContext.from_summary(summary)
+
     async def generate_prompt(
         self,
         request: PromptGenerationRequest,
     ) -> AgentPromptOutput:
         """
         Generate a music prompt based on the wizard selections.
-        
+
         Args:
             request: The validated prompt generation request containing
-                    project_blueprint, sound_profile, delivery_and_control,
-                    and instrumental_only settings.
-        
+                    project_blueprint, sound_profile, finetune_id,
+                    delivery_and_control, and instrumental_only settings.
+
         Returns:
             The generated AgentPromptOutput containing prompt, title, and description.
-        
+
         Raises:
             RuntimeError: If prompt generation fails.
         """
         try:
-            # Convert the request to JSON format that the agent can parse
-            user_message = request.model_dump_json(indent=2)
-            
+            # Resolve the finetune server-side so the agent derives genre from real
+            # trained-model metadata rather than from the bare slug.
+            finetune_context = await self._resolve_finetune_context(request.finetune_id)
+
+            # Build the JSON payload the agent parses. finetune_context is resolved,
+            # not submitted, so it lives here rather than on the request model (which
+            # is echoed back to the client as input_parameters).
+            payload = request.model_dump()
+            if finetune_context is not None:
+                payload["finetune_context"] = finetune_context.model_dump()
+            user_message = json.dumps(payload, indent=2)
+
             logger.info(
                 f"Generating prompt for: "
                 f"blueprint={request.project_blueprint.value}, "
-                f"profile={request.sound_profile.value}, "
+                f"profile={request.sound_profile}, "
+                f"finetune_id={request.finetune_id}, "
+                f"finetune_context={'resolved' if finetune_context else 'unresolved'}, "
                 f"control={request.delivery_and_control.value}, "
                 f"instrumental={request.instrumental_only}, "
                 f"user_narrative={'provided' if request.user_narrative else 'none'}"
             )
-            
+
             # Run the agent to generate the prompt
             result = await Runner.run(
                 self.agent,

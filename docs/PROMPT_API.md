@@ -22,14 +22,15 @@ The implementation follows FastAPI best practices with a clean separation of con
 
 ## Endpoint: POST /prompt
 
-Generates a music prompt based on three preset selections using an AI agent with expert music direction knowledge.
+Generates a music prompt from two preset selections plus the ElevenLabs finetune that will render the track, using an AI agent with expert music direction knowledge.
 
 ### Request Body
 
 ```json
 {
   "project_blueprint": "ad_brand_fast_hook",
-  "sound_profile": "bright_pop_electro",
+  "sound_profile": "upbeat_pop",
+  "finetune_id": "gduoyhnzn5nvb246gg7i",
   "delivery_and_control": "balanced_studio",
   "instrumental_only": false,
   "user_narrative": null
@@ -45,12 +46,23 @@ Generates a music prompt based on three preset selections using an AI agent with
   - `meditation_sleep` - Ambient meditation/sleep music
   - `standalone_song_mini` - 90s mini-song with structure
 
-- **sound_profile** (required): Defines genre and sonic characteristics
-  - `bright_pop_electro` - Uplifting electronic/EDM
-  - `dark_trap_night` - Dark trap/hip-hop
-  - `lofi_cozy` - Cozy lo-fi beats
-  - `epic_cinematic` - Epic cinematic orchestral
-  - `indie_live_band` - Indie live band sound
+- **sound_profile** (required): Slug naming the ElevenLabs finetune that will render the track, e.g.
+  `indie_dance`, `lofi_pulse`, `dark_cinematic`. **Not an enum and not a fixed list** — finetunes are
+  created and removed in ElevenLabs without any change here, so any slug is accepted.
+
+- **finetune_id** (required): The id of that finetune. Fetch the available finetunes from
+  `GET /finetunes` and send the chosen entry's `id`.
+
+  The server resolves this id against ElevenLabs (through a short-lived cache, so it usually costs
+  nothing) and hands the agent the finetune's real `name`, `primary_genre` and `tags`. The agent
+  *derives* genre family, tempo, key, groove, harmony, instrumentation and vocal character from that
+  metadata rather than reading them off a hand-written preset.
+
+  - Omitting it is a **422**. The genre is never guessed or defaulted.
+  - If the finetune can't be resolved (deleted, or ElevenLabs unreachable), the request still returns
+    **200**: a warning is logged and the agent infers the genre from the slug alone.
+  - The generated prompt/title/description never mention the finetune by name or slug — they describe
+    the sound, not the tooling.
 
 - **delivery_and_control** (required): Defines workflow preferences
   - `exploratory_iterate` - Exploratory with iteration
@@ -76,7 +88,8 @@ Generates a music prompt based on three preset selections using an AI agent with
   "timestamp": "2025-12-22T10:30:00Z",
   "input_parameters": {
     "project_blueprint": "ad_brand_fast_hook",
-    "sound_profile": "bright_pop_electro",
+    "sound_profile": "upbeat_pop",
+    "finetune_id": "gduoyhnzn5nvb246gg7i",
     "delivery_and_control": "balanced_studio",
     "instrumental_only": false,
     "user_narrative": null
@@ -102,7 +115,8 @@ curl -X POST http://localhost:8000/prompt \
   -H "Content-Type: application/json" \
   -d '{
     "project_blueprint": "meditation_sleep",
-    "sound_profile": "lofi_cozy",
+    "sound_profile": "lofi_pulse",
+    "finetune_id": "sqwy9yr9rgik4fjq83lq",
     "delivery_and_control": "exploratory_iterate",
     "instrumental_only": true,
     "user_narrative": null
@@ -116,7 +130,8 @@ curl -X POST http://localhost:8000/prompt \
   -H "Content-Type: application/json" \
   -d '{
     "project_blueprint": "standalone_song_mini",
-    "sound_profile": "indie_live_band",
+    "sound_profile": "golden_hour_indie_guitar",
+    "finetune_id": "v1hamfp8dn8witowl0ku",
     "delivery_and_control": "balanced_studio",
     "instrumental_only": false,
     "user_narrative": "A love song for my wife Sarah on our 10th wedding anniversary. We met at a coffee shop in Seattle and she loves rainy days and acoustic guitar."
@@ -135,7 +150,8 @@ async def generate_prompt():
             "http://localhost:8000/prompt",
             json={
                 "project_blueprint": "ad_brand_fast_hook",
-                "sound_profile": "bright_pop_electro",
+                "sound_profile": "upbeat_pop",
+                "finetune_id": "gduoyhnzn5nvb246gg7i",
                 "delivery_and_control": "balanced_studio",
                 "instrumental_only": False,
                 "user_narrative": None
@@ -161,7 +177,8 @@ async def generate_prompt_with_narrative():
             "http://localhost:8000/prompt",
             json={
                 "project_blueprint": "standalone_song_mini",
-                "sound_profile": "indie_live_band",
+                "sound_profile": "golden_hour_indie_guitar",
+                "finetune_id": "v1hamfp8dn8witowl0ku",
                 "delivery_and_control": "balanced_studio",
                 "instrumental_only": False,
                 "user_narrative": "A birthday song for my daughter Emma who just turned 5. She loves unicorns, rainbows, and dancing in the garden."
@@ -184,7 +201,8 @@ response = requests.post(
     "http://localhost:8000/prompt",
     json={
         "project_blueprint": "video_game_action_loop",
-        "sound_profile": "epic_cinematic",
+        "sound_profile": "dark_cinematic",
+        "finetune_id": "ycnbaxci6zvbfumryyjn",
         "delivery_and_control": "balanced_studio",
         "instrumental_only": True,
         "user_narrative": None
@@ -204,7 +222,8 @@ curl -X POST http://localhost:8000/prompt \
   -H "Content-Type: application/json" \
   -d '{
     "project_blueprint": "standalone_song_mini",
-    "sound_profile": "indie_live_band",
+    "sound_profile": "golden_hour_indie_guitar",
+    "finetune_id": "v1hamfp8dn8witowl0ku",
     "delivery_and_control": "balanced_studio",
     "instrumental_only": false,
     "user_narrative": "Create a song inspired by this article about our company journey: https://example.com/our-story"
@@ -246,7 +265,8 @@ The prompt generation agent has access to OpenAI's built-in **WebSearchTool**, e
 ```json
 {
   "project_blueprint": "standalone_song_mini",
-  "sound_profile": "bright_pop_electro",
+  "sound_profile": "upbeat_pop",
+  "finetune_id": "gduoyhnzn5nvb246gg7i",
   "delivery_and_control": "balanced_studio",
   "user_narrative": "Create an uplifting company anthem based on our mission: https://example.com/about-us"
 }
@@ -256,7 +276,8 @@ The prompt generation agent has access to OpenAI's built-in **WebSearchTool**, e
 ```json
 {
   "project_blueprint": "standalone_song_mini",
-  "sound_profile": "indie_live_band",
+  "sound_profile": "golden_hour_indie_guitar",
+  "finetune_id": "v1hamfp8dn8witowl0ku",
   "delivery_and_control": "balanced_studio",
   "user_narrative": "Music for our wedding based on our story here: https://ourwedding.com/our-story"
 }
@@ -266,7 +287,8 @@ The prompt generation agent has access to OpenAI's built-in **WebSearchTool**, e
 ```json
 {
   "project_blueprint": "ad_brand_fast_hook",
-  "sound_profile": "bright_pop_electro",
+  "sound_profile": "upbeat_pop",
+  "finetune_id": "gduoyhnzn5nvb246gg7i",
   "delivery_and_control": "balanced_studio",
   "user_narrative": "Create a catchy jingle for this product: https://example.com/product/awesome-gadget"
 }
@@ -308,6 +330,14 @@ You can combine URLs with additional context:
 - Detailed error messages for debugging
 - Request ID included in all error responses
 - Graceful degradation with informative error messages
+
+| Status | Cause |
+| --- | --- |
+| `422` | Invalid or missing input — including a missing `finetune_id`, or a `project_blueprint` / `delivery_and_control` outside its enum. An unfamiliar `sound_profile` slug is **not** an error. |
+| `500` | System prompt instructions missing, or the agent failed to produce valid output. |
+
+An unresolvable `finetune_id` is deliberately **not** an error: it logs a warning and degrades to
+inferring the genre from the `sound_profile` slug.
 
 ### Performance
 - Lazy loading of system prompt instructions
@@ -372,5 +402,5 @@ The `/prompt` endpoint is based on the logic from `testing/test_agents.py` with 
 The core logic remains the same:
 - Uses the same system prompt instructions
 - Same OpenAI Agents SDK integration
-- Same three-choice wizard approach
+- Same preset wizard approach (two presets plus a finetune-derived sound profile)
 - Enhanced output format with AI-generated title and description alongside the prompt

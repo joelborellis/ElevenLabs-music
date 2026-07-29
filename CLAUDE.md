@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-FastAPI-based REST API for AI-powered music generation using OpenAI Agents for prompt generation and ElevenLabs for music rendering. The core feature is a "three-choice" preset wizard system that transforms user selections into professional music prompts.
+FastAPI-based REST API for AI-powered music generation using OpenAI Agents for prompt generation and ElevenLabs for music rendering. The core feature is a preset wizard that transforms two preset selections plus a chosen ElevenLabs finetune into professional music prompts.
 
 ## Commands
 
@@ -35,9 +35,11 @@ Client → FastAPI Router → Pydantic Validation → Service Layer → External
 
 ### Three-Stage Music Generation Pipeline
 
-1. **POST /prompt** - Converts the preset choices (plus optional overrides) into a music prompt via an OpenAI Agent equipped with a web search tool
+1. **POST /prompt** - Converts the preset choices and chosen finetune (plus optional overrides) into a music prompt via an OpenAI Agent equipped with a web search tool. Resolves `finetune_id` against ElevenLabs to get real genre metadata for the agent
 2. **POST /plan** - Generates composition plan from prompt via ElevenLabs API (`music_v2`)
-3. **POST /render** - Renders audio from composition plan via ElevenLabs `compose_detailed` (`music_v2`); supports WebSocket streaming with progress updates
+3. **POST /render** - Renders audio from composition plan via ElevenLabs `compose_detailed` (`music_v2`); supports WebSocket streaming with progress updates. Pass the same `finetune_id` here that was used for `/prompt`
+
+Supporting endpoint: **GET /finetunes** - proxies ElevenLabs' finetune list (cached, key stays server-side) so the client can populate the style picker that produces `sound_profile` + `finetune_id`.
 
 ### Key Directories
 
@@ -49,20 +51,27 @@ Client → FastAPI Router → Pydantic Validation → Service Layer → External
 - `testing/` - Test scripts (the core-pipeline ones are listed under Commands; other scripts are experimental)
 - `output/music/` - Generated audio files (runtime)
 
-### The Three-Choice Preset System
+### The Preset System
 
-Users select one from each category:
+Two closed-set presets (Pydantic enums in `models/prompt.py`):
 
 **Project Blueprint** (use case): ad_brand_fast_hook, podcast_voiceover_loop, video_game_action_loop, meditation_sleep, standalone_song_mini
 
-**Sound Profile** (genre): bright_pop_electro, dark_trap_night, lofi_cozy, epic_cinematic, indie_live_band
-
 **Delivery & Control** (workflow): exploratory_iterate, balanced_studio, blueprint_plan_first, live_one_take, isolation_stems
 
-In addition to the three presets, the `/prompt` request (`PromptGenerationRequest`) accepts two optional inputs:
+Genre is **not** a preset. It comes from an ElevenLabs finetune the user picks (via `GET /finetunes`):
+
+- `sound_profile` (str, required) - slug naming the finetune, e.g. `indie_dance`. Open-ended: any slug is valid, there is no enum
+- `finetune_id` (str, **required**) - the finetune's id. Missing it is a `422`; the genre is never guessed
+
+`services/prompt_generator.py` resolves `finetune_id` server-side via `FinetuneService.get_finetune()` and merges the resulting `finetune_context` (`name`, `primary_genre`, `tags`) into the JSON handed to the agent. The agent *derives* the eleven sound attributes from that metadata rather than looking them up. If the finetune can't be resolved, a warning is logged and the agent infers the genre from the slug alone — the request still succeeds. `finetune_context` is deliberately not on `PromptGenerationRequest`, which is echoed back as `input_parameters`.
+
+Two further optional inputs on `PromptGenerationRequest`:
 
 - `instrumental_only` (bool, default `false`) - forces instrumental-only output regardless of the project blueprint
-- `user_narrative` (str, optional) - freeform story/occasion/people details used to guide lyrics and vocal tone
+- `user_narrative` (str, optional) - freeform story/occasion/people details used to guide lyrics and vocal tone. It governs lyrics and emotion but **never** genre — the finetune is authoritative there
+
+The system prompt forbids naming the finetune (its name, slug, or the words "finetune"/"style model") anywhere in the generated prompt, title, or description.
 
 ### External Integrations
 

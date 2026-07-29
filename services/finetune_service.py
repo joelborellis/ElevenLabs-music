@@ -36,6 +36,13 @@ class _CacheEntry:
     next_cursor: Optional[str]
 
 
+@dataclass
+class _IdCacheEntry:
+    """A cached single-finetune lookup. ``summary`` is None for a known miss."""
+    fetched_at: float
+    summary: Optional[FinetuneSummary]
+
+
 class FinetuneService:
     """Service for retrieving available music finetunes from ElevenLabs."""
 
@@ -52,6 +59,8 @@ class FinetuneService:
         # (model_id, only_completed) are applied per-request to the cached data,
         # so one fetch can serve many filter combinations.
         self._cache: dict[tuple, _CacheEntry] = {}
+        # Single-id lookups that missed the page cache, keyed on finetune id.
+        self._id_cache: dict[str, _IdCacheEntry] = {}
         self._cache_lock = threading.Lock()
 
     def _fetch_page(
@@ -99,9 +108,74 @@ class FinetuneService:
         return entry
 
     def clear_cache(self) -> None:
-        """Drop all cached finetune pages (next call refetches)."""
+        """Drop all cached finetune pages and id lookups (next call refetches)."""
         with self._cache_lock:
             self._cache.clear()
+            self._id_cache.clear()
+
+    def get_finetune(self, finetune_id: str) -> Optional[FinetuneSummary]:
+        """Look up a single finetune by id.
+
+        Checks the cached list pages first — a picker load usually warmed them, so
+        the common path costs nothing and adds no latency to /prompt. Falls back to
+        the upstream single-finetune endpoint for ids that aren't on a cached page.
+
+        Never raises: a deleted finetune or an unreachable ElevenLabs must degrade
+        the prompt (callers infer genre from the slug alone), not fail the request.
+
+        Args:
+            finetune_id: The finetune id to resolve.
+
+        Returns:
+            The matching FinetuneSummary, or None if it is unknown or unreachable.
+        """
+        if not finetune_id:
+            return None
+
+        now = time.monotonic()
+
+        with self._cache_lock:
+            # Page cache holds pre-filter summaries, so this hits regardless of the
+            # only_completed / model_id filters any earlier listing applied.
+            for entry in self._cache.values():
+                if CACHE_TTL_SECONDS > 0 and (now - entry.fetched_at) >= CACHE_TTL_SECONDS:
+                    continue
+                for summary in entry.summaries:
+                    if summary.id == finetune_id:
+                        logger.debug("Finetune %s resolved from page cache", finetune_id)
+                        return summary
+
+            id_entry = self._id_cache.get(finetune_id)
+            if (
+                id_entry is not None
+                and CACHE_TTL_SECONDS > 0
+                and (now - id_entry.fetched_at) < CACHE_TTL_SECONDS
+            ):
+                logger.debug("Finetune %s resolved from id cache", finetune_id)
+                return id_entry.summary
+
+        try:
+            ft = self._client.music.finetunes.get(finetune_id)
+            summary = FinetuneSummary.model_validate(
+                ft.dict() if hasattr(ft, "dict") else ft
+            )
+            logger.info(
+                "Fetched finetune %s from ElevenLabs (name=%r, primary_genre=%r)",
+                finetune_id, summary.name, summary.primary_genre,
+            )
+        except Exception as e:
+            # Deleted finetune, bad id, or ElevenLabs unreachable. Cache the miss so
+            # a burst of requests for a dead id doesn't hammer the upstream.
+            logger.warning("Could not resolve finetune %s: %s", finetune_id, e)
+            summary = None
+
+        if CACHE_TTL_SECONDS > 0:
+            with self._cache_lock:
+                self._id_cache[finetune_id] = _IdCacheEntry(
+                    fetched_at=time.monotonic(),
+                    summary=summary,
+                )
+        return summary
 
     def list_finetunes(
         self,

@@ -12,7 +12,14 @@
       "Bash(curl -s \"https://api.elevenlabs.io/v1/music/finetunes\" -H \"xi-api-key: sk_076f0a1c51059fba2e39ca693c2688525956a988a3990386\" -o finetunes.json -w \"HTTP %{http_code}\\\\n\")",
       "Bash(python -m json.tool finetunes.json finetunes.json)",
       "PowerShell(uv run python testing/test_finetune_compose.py)",
-      "Bash(uv run python -c ' *)"
+      "Bash(uv run python -c ' *)",
+      "Bash(git check-ignore *)",
+      "Bash(docker info *)",
+      "Bash(az account *)",
+      "Bash(az containerapp *)",
+      "Bash(az acr *)",
+      "Bash(timeout 60 docker version --format \"client={{.Client.Version}} server={{.Server.Version}}\")",
+      "Bash(echo \"exit=$?\")"
     ]
   }
 }

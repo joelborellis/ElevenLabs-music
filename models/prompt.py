@@ -16,16 +16,6 @@ class ProjectBlueprint(str, Enum):
     STANDALONE_SONG_MINI = "standalone_song_mini"
 
 
-class SoundProfile(str, Enum):
-    """Sound profile presets defining the genre and sonic characteristics."""
-    
-    BRIGHT_POP_ELECTRO = "bright_pop_electro"
-    DARK_TRAP_NIGHT = "dark_trap_night"
-    LOFI_COZY = "lofi_cozy"
-    EPIC_CINEMATIC = "epic_cinematic"
-    INDIE_LIVE_BAND = "indie_live_band"
-
-
 class DeliveryAndControl(str, Enum):
     """Delivery and control presets defining workflow and output preferences."""
     
@@ -43,9 +33,17 @@ class PromptGenerationRequest(BaseModel):
         ...,
         description="The project blueprint preset defining use case and structure"
     )
-    sound_profile: SoundProfile = Field(
+    sound_profile: str = Field(
         ...,
-        description="The sound profile preset defining genre and sonic characteristics"
+        min_length=1,
+        description="Slug naming the ElevenLabs finetune used for rendering (e.g. 'indie_dance'). "
+                    "Open-ended: new finetunes appear without any change here."
+    )
+    finetune_id: str = Field(
+        ...,
+        min_length=1,
+        description="Id of the finetune named by 'sound_profile'. Resolved server-side into genre "
+                    "metadata that drives the prompt. Get ids from GET /finetunes."
     )
     delivery_and_control: DeliveryAndControl = Field(
         ...,
@@ -65,21 +63,24 @@ class PromptGenerationRequest(BaseModel):
             "examples": [
                 {
                     "project_blueprint": "ad_brand_fast_hook",
-                    "sound_profile": "bright_pop_electro",
+                    "sound_profile": "upbeat_pop",
+                    "finetune_id": "gduoyhnzn5nvb246gg7i",
                     "delivery_and_control": "balanced_studio",
                     "instrumental_only": False,
                     "user_narrative": None
                 },
                 {
                     "project_blueprint": "standalone_song_mini",
-                    "sound_profile": "indie_live_band",
+                    "sound_profile": "golden_hour_indie_guitar",
+                    "finetune_id": "v1hamfp8dn8witowl0ku",
                     "delivery_and_control": "balanced_studio",
                     "instrumental_only": False,
                     "user_narrative": "A love song for my wife Sarah on our 10th wedding anniversary. We met at a coffee shop in Seattle and she loves rainy days and acoustic guitar."
                 },
                 {
                     "project_blueprint": "meditation_sleep",
-                    "sound_profile": "lofi_cozy",
+                    "sound_profile": "relaxing_ambient",
+                    "finetune_id": "c8gueokxdvc0websp3mh",
                     "delivery_and_control": "exploratory_iterate",
                     "instrumental_only": True,
                     "user_narrative": None
@@ -145,7 +146,8 @@ class PromptGenerationResponse(BaseModel):
                     "timestamp": "2025-12-22T10:30:00Z",
                     "input_parameters": {
                         "project_blueprint": "ad_brand_fast_hook",
-                        "sound_profile": "bright_pop_electro",
+                        "sound_profile": "upbeat_pop",
+                        "finetune_id": "gduoyhnzn5nvb246gg7i",
                         "delivery_and_control": "balanced_studio",
                         "instrumental_only": False
                     }
