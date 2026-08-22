@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM python:3.12-slim
+FROM python:3.12-alpine
 
 # uv for fast, reproducible installs (copied from the official uv image).
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
