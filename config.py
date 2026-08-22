@@ -6,16 +6,23 @@ database modules can import ``settings`` without creating an import cycle throug
 ``main`` -> ``routers`` -> ``services``.
 """
 
+import os
 from typing import Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Application settings sourced from environment variables / ``.env``."""
+    """Application settings sourced from environment variables / ``.env``.
+
+    The env file itself is selectable via ``ENV_FILE`` (defaults to ``.env``),
+    so a local dev profile - e.g. ``.env.local`` pointing at SQLite + local
+    filesystem storage instead of Azure - can be swapped in without editing
+    ``.env``: ``ENV_FILE=.env.local uv run python main.py``.
+    """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=os.getenv("ENV_FILE", ".env"),
         env_file_encoding="utf-8",
         extra="ignore",  # Ignore extra keys in .env that aren't defined here
     )

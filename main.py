@@ -13,9 +13,22 @@ This application includes:
 # Load environment variables FIRST before any other imports
 from dotenv import load_dotenv
 import os
+import sys
 
-# Load .env file
-load_dotenv()
+# `python main.py --local` loads .env.local (local SQLite + filesystem storage)
+# instead of .env (Azure). This is a CLI flag rather than an env var handed down
+# through the shell/uv, since env vars passed that way have proven unreliable to
+# propagate correctly on some setups. `os.environ.get("ENV_FILE")` is checked
+# FIRST (not just `--local`) because uvicorn's --reload spawns a second child
+# process with its own sys.argv that does NOT include our flag - only a real
+# env var survives that respawn, so once the parent sets ENV_FILE for real, the
+# child must trust it rather than recomputing from its own (different) argv.
+_env_file = os.environ.get("ENV_FILE") or (".env.local" if "--local" in sys.argv else ".env")
+if "--local" in sys.argv:
+    sys.argv.remove("--local")
+
+load_dotenv(_env_file, override=True)
+os.environ["ENV_FILE"] = _env_file
 
 # Validate critical environment variables
 if not os.getenv("OPENAI_API_KEY"):

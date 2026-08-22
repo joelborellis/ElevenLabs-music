@@ -130,8 +130,19 @@ async def render_music(
             render_service = get_render_service()
             result = render_service.render(request_data)
 
-            # Persist the render metadata (audio bytes already in storage)
-            await repo.create_render(session, result, request_data, request_id)
+            # Persist the render metadata (audio bytes already in storage).
+            # Best-effort: the render already succeeded and the file is already
+            # in blob storage, so a DB hiccup (e.g. a transient connection
+            # failure) must not turn a successful render into a 500.
+            try:
+                await repo.create_render(session, result, request_data, request_id)
+            except Exception as e:
+                logger.error(
+                    f"Failed to persist render row (file is safe in storage) - "
+                    f"request_id={request_id}, id={result.id}, error={str(e)}",
+                    exc_info=True,
+                )
+                span.record_exception(e)
 
             span.set_attribute("render_id", result.id)
             span.set_attribute("filename", result.filename)
@@ -392,10 +403,20 @@ async def render_websocket(websocket: WebSocket):
         )
 
         # Persist the render metadata (WebSocket can't use Depends for a
-        # per-message session, so open one explicitly).
-        sessionmaker = get_sessionmaker()
-        async with sessionmaker() as session:
-            await repo.create_render(session, result, render_request, request_id)
+        # per-message session, so open one explicitly). Best-effort: the
+        # render already succeeded and the file is already in blob storage,
+        # so a DB hiccup (e.g. a transient connection failure) must not
+        # prevent the result from reaching the client.
+        try:
+            sessionmaker = get_sessionmaker()
+            async with sessionmaker() as session:
+                await repo.create_render(session, result, render_request, request_id)
+        except Exception as e:
+            logger.error(
+                f"Failed to persist render row (file is safe in storage) - "
+                f"request_id={request_id}, id={result.id}, error={str(e)}",
+                exc_info=True,
+            )
 
         # Build and send final response
         response = RenderResponse(

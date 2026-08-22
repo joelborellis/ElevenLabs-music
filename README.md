@@ -56,6 +56,46 @@ The API will be available at:
 - Interactive docs: http://localhost:8000/docs
 - Alternative docs: http://localhost:8000/redoc
 
+### Running Fully Local (no Azure)
+
+By default `.env` can point `STORAGE_BACKEND`/`DATABASE_URL` at Azure Blob Storage and
+Azure Database for PostgreSQL. For local dev without any Azure dependency — rendered
+audio on the local filesystem, metadata in a local SQLite file — use a second env file,
+`.env.local`:
+
+```bash
+# .env.local
+ENVIRONMENT=development
+OPENAI_API_KEY=sk-your-api-key-here
+ELEVENLABS_API_KEY=your-elevenlabs-key
+STORAGE_BACKEND=local
+LOCAL_STORAGE_DIR=output/music
+DATABASE_URL=sqlite+aiosqlite:///./data/renders.db
+```
+
+Run with a `--local` CLI flag, **not** a shell-level env var:
+
+```bash
+uv run python main.py --local
+```
+
+Same command on Windows PowerShell, no `$env:` prefix needed. Omit the flag for a
+plain `uv run python main.py` and it falls back to `.env` (Azure config) as before.
+
+This is a CLI flag rather than an env var on purpose. `main.py` reads `--local` from
+`sys.argv` and force-loads `.env.local` from inside the process itself
+(`load_dotenv(".env.local", override=True)`), instead of relying on a shell/`uv`
+env var to reach the process correctly — that path has proven unreliable on some
+setups (`uv run` auto-loads `.env` on every invocation independent of app-level
+settings, and those values can silently win). It's also why `uvicorn --reload`'s
+child worker process — which respawns with its own `sys.argv` that does **not**
+include `--local` — still resolves correctly: the parent process's choice is
+stashed in `ENV_FILE`, a real env var the child inherits normally, and `main.py`
+checks that before falling back to re-reading `--local` from its own argv.
+
+With `ENVIRONMENT=development`, SQLite tables are created automatically on startup
+(no Alembic step needed). `.env.local` is gitignored, same as `.env`.
+
 ## Endpoints
 
 | Method | Path | Purpose |

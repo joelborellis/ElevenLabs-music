@@ -9,6 +9,7 @@ wheels/
 # Virtual environments
 .venv
 .env
+.env.local
 
 # Generated audio output (runtime)
 /output/
