@@ -13,9 +13,7 @@
       "Bash(python -m json.tool finetunes.json finetunes.json)",
       "PowerShell(uv run python testing/test_finetune_compose.py)",
       "Bash(uv run python -c ' *)",
-<<<<<<< HEAD
-      "Bash(git config *)"
-=======
+      "Bash(git config *)",
       "Bash(git check-ignore *)",
       "Bash(docker info *)",
       "Bash(az account *)",
@@ -23,7 +21,6 @@
       "Bash(az acr *)",
       "Bash(timeout 60 docker version --format \"client={{.Client.Version}} server={{.Server.Version}}\")",
       "Bash(echo \"exit=$?\")"
->>>>>>> c8d6ba766ab859ded831064440bba988556e6acc
     ]
   }
 }
