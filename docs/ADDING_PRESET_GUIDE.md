@@ -1,8 +1,16 @@
-# Adding a New Preset Option - Implementation Guide
+# Adding a Project Blueprint or Delivery preset - Implementation Guide
 
 ## Overview
 
-Adding a new preset option to any of the three categories (ProjectBlueprint, SoundProfile, or DeliveryAndControl) requires updating **10 files** across the codebase.
+There are **two** hand-authored preset categories left: `ProjectBlueprint` (use case and structure) and
+`DeliveryAndControl` (workflow and strictness). Adding a value to either means touching a handful of
+files, listed below.
+
+> **Sound profiles are no longer authored by hand.** `sound_profile` names an ElevenLabs music
+> finetune, and the AI derives genre, tempo, groove and instrumentation from that finetune's own
+> metadata. New styles become available the moment a finetune is created in ElevenLabs — there is
+> nothing to add to this codebase, and no enum to extend. See
+> [`PRESETS_GUIDE.md`](./PRESETS_GUIDE.md) and [`FRONTEND_FINETUNES.md`](./FRONTEND_FINETUNES.md).
 
 ---
 
@@ -12,8 +20,8 @@ Adding a new preset option to any of the three categories (ProjectBlueprint, Sou
 
 | File | Purpose |
 |------|---------|
-| `models/prompt.py` | **Primary enum definitions** - Add new enum value here first |
-| `prompts/generate_music_prompt.md` | **AI system prompt** - Contains authoritative preset mappings the OpenAI Agent reads |
+| `models/prompt.py` | **Primary enum definitions** - Add the new enum value here first |
+| `prompts/generate_music_prompt.md` | **AI system prompt** - Contains the authoritative preset mappings the OpenAI Agent reads |
 
 ### Documentation Updates
 
@@ -21,6 +29,7 @@ Adding a new preset option to any of the three categories (ProjectBlueprint, Sou
 |------|---------|
 | `docs/PRESETS_GUIDE.md` | User-friendly preset guide with detailed descriptions |
 | `docs/PROMPT_API.md` | API documentation with parameter descriptions and examples |
+| `docs/FRONTEND_API_GUIDE.md` | The contract the frontend builds its wizard from |
 | `README.md` | Project overview listing all preset options |
 | `CLAUDE.md` | Developer instructions with preset system overview |
 
@@ -28,15 +37,14 @@ Adding a new preset option to any of the three categories (ProjectBlueprint, Sou
 
 | File | Purpose |
 |------|---------|
-| `testing/test_agents.py` | Contains **duplicate** enum definitions (should import from models) |
-| `testing/test_prompt_endpoint.py` | API endpoint test cases using preset combinations |
-| `testing/test_service_direct.py` | Direct service layer tests |
+| `testing/prompt_test_cases.json` | Payloads driving `testing/test_prompt_endpoint.py` |
+| `testing/test_service_direct.py` | Direct service layer test |
 
 ### Optional (OpenAPI Examples)
 
 | File | Purpose |
 |------|---------|
-| `routers/prompt.py` | May need to update OpenAPI example values in docstrings |
+| `routers/prompt.py` | May need updated OpenAPI example values in the endpoint description |
 
 ---
 
@@ -60,20 +68,6 @@ class ProjectBlueprint(str, Enum):
     # CORPORATE_PRESENTATION = "corporate_presentation"
 ```
 
-**For SoundProfile:**
-```python
-class SoundProfile(str, Enum):
-    """Sound profile presets defining the genre and sonic characteristics."""
-
-    BRIGHT_POP_ELECTRO = "bright_pop_electro"
-    DARK_TRAP_NIGHT = "dark_trap_night"
-    LOFI_COZY = "lofi_cozy"
-    EPIC_CINEMATIC = "epic_cinematic"
-    INDIE_LIVE_BAND = "indie_live_band"
-    # ADD NEW PRESET HERE, e.g.:
-    # ACOUSTIC_SINGER_SONGWRITER = "acoustic_singer_songwriter"
-```
-
 **For DeliveryAndControl:**
 ```python
 class DeliveryAndControl(str, Enum):
@@ -92,10 +86,11 @@ class DeliveryAndControl(str, Enum):
 
 ### Step 2: Add to `prompts/generate_music_prompt.md`
 
-This is the **most important file** - it contains the authoritative mappings that the AI agent uses.
+This is the **most important file** — it contains the authoritative mappings that the AI agent uses.
+Sections A and C are closed-set mappings; Section B is a derivation procedure and is not edited when
+adding a preset.
 
 **For ProjectBlueprint (Section A):**
-Add a new section following the existing format:
 ```markdown
 ### `your_new_preset_id`
 - use_case_intent: [Describe the use case]
@@ -106,22 +101,6 @@ Add a new section following the existing format:
 - lyrics_plan: [If vocals, describe lyrics approach]
 - lyric_language: [Language, usually English]
 - vocal_timing_cue: [When vocals start, or "(ignored)" if instrumental]
-```
-
-**For SoundProfile (Section B):**
-```markdown
-### `your_new_preset_id`
-- primary_genre_family: [Genre category]
-- genre_fusion_accent: [None or describe fusion]
-- mood_tonal_color: [Describe mood]
-- energy_curve: [Build → Drop / Steady / etc.]
-- tempo_bpm: [BPM range]
-- key_tonality: [Key or "Choose best-fitting key"]
-- groove_feel: [Straight 4/4 / Swing / Half-time / etc.]
-- harmony_complexity: [Simple pop / Modal / Jazz-leaning / etc.]
-- instrumentation_palette: [Describe instruments]
-- lead_focus: [What leads the melody]
-- vocal_character: [If vocals enabled, describe voice style]
 ```
 
 **For DeliveryAndControl (Section C):**
@@ -135,32 +114,13 @@ Add a new section following the existing format:
 - isolation_intent: [None / Strong]
 ```
 
----
-
-### Step 3: Update `testing/test_agents.py`
-
-Add the same enum value to the duplicate definitions in this file:
-
-```python
-# Around line 28-50
-class ProjectBlueprint(str, Enum):
-    # ... existing values ...
-    YOUR_NEW_PRESET = "your_new_preset_id"
-
-class SoundProfile(str, Enum):
-    # ... existing values ...
-    YOUR_NEW_PRESET = "your_new_preset_id"
-
-class DeliveryAndControl(str, Enum):
-    # ... existing values ...
-    YOUR_NEW_PRESET = "your_new_preset_id"
-```
-
-**Note:** Ideally, refactor this file to import from `models/prompt.py` instead of duplicating.
+**Keep the mapping genre-neutral.** The finetune owns genre, tempo, groove, harmony and
+instrumentation (Section B, rule 1). A blueprint or delivery preset that prescribes a genre will fight
+whatever style the user picked. Describe *structure, duration, strictness and production stance* only.
 
 ---
 
-### Step 4: Update Documentation Files
+### Step 3: Update Documentation Files
 
 #### `docs/PRESETS_GUIDE.md`
 Add a new section following the existing format with:
@@ -174,26 +134,32 @@ Add a new section following the existing format with:
 - Add the new preset to the parameter descriptions list
 - Add example usage if relevant
 
+#### `docs/FRONTEND_API_GUIDE.md`
+- Add the value to the preset enum table in §3.1 and to the TypeScript union in §5
+
 #### `README.md`
 - Add to the "Available Presets" section under the appropriate category
 
 #### `CLAUDE.md`
-- Add to the preset lists in "The Three-Choice Preset System" section
+- Add to the preset lists in "The Preset System" section
 
 ---
 
-### Step 5: Update Test Files (Optional but Recommended)
+### Step 4: Update Test Files (Optional but Recommended)
 
-#### `testing/test_prompt_endpoint.py`
-Add a new test case using the preset:
-```python
+#### `testing/prompt_test_cases.json`
+Add a new case exercising the preset. Every payload needs a real `sound_profile` + `finetune_id` pair —
+grab one from `testing/finetunes.json` or a live `GET /finetunes` call:
+
+```json
 {
     "name": "Your New Test Case Name",
     "payload": {
         "project_blueprint": "your_blueprint",
-        "sound_profile": "your_sound_profile",
+        "sound_profile": "lofi_pulse",
+        "finetune_id": "sqwy9yr9rgik4fjq83lq",
         "delivery_and_control": "your_delivery",
-        "instrumental_only": False,
+        "instrumental_only": false,
         "user_narrative": "Your test narrative"
     }
 }
@@ -204,33 +170,19 @@ No changes typically needed unless you want explicit test coverage.
 
 ---
 
-### Step 6: Optional - Update Router Examples
+### Step 5: Optional - Update Router Examples
 
 #### `routers/prompt.py`
-If desired, update the OpenAPI examples in the docstring to include the new preset.
+If desired, update the OpenAPI examples in the endpoint description to include the new preset.
 
 ---
 
 ## Files NOT Requiring Modification
 
-- `models/__init__.py` - Auto-exports from prompt.py
+- `models/__init__.py` - Only re-exports the enum classes, not their members
 - `services/prompt_generator.py` - Uses enum values dynamically
+- `services/finetune_service.py` - Concerns finetunes, not presets
 - `main.py` - No direct preset references
-
----
-
-## Key Insight: Duplicate Enum Definitions
-
-There are **two places** where presets are currently defined:
-1. `models/prompt.py` - Canonical source (used by API)
-2. `testing/test_agents.py` - Duplicate definitions (original CLI wizard)
-
-**Recommended Refactor:** Update `test_agents.py` to import from `models/prompt.py`:
-```python
-from models.prompt import ProjectBlueprint, SoundProfile, DeliveryAndControl
-```
-
-This would eliminate the need to maintain two copies and reduce the files needing updates from 10 to 9.
 
 ---
 
@@ -240,46 +192,38 @@ After making changes, verify:
 
 - [ ] API accepts the new preset value (test with curl or /docs)
 - [ ] Generated prompts correctly incorporate the preset mappings
+- [ ] The preset does not override the finetune's genre — generate with two very different finetunes
+      and confirm both still sound like their style
 - [ ] Documentation is consistent across all files
-- [ ] Tests pass with the new preset
+- [ ] `uv run python testing/test_prompt_endpoint.py` passes
 
 ---
 
-## Example: Adding `acoustic_singer_songwriter` to SoundProfile
+## Example: Adding `corporate_presentation` to ProjectBlueprint
 
-### 1. `models/prompt.py` (line 26):
+### 1. `models/prompt.py`:
 ```python
-ACOUSTIC_SINGER_SONGWRITER = "acoustic_singer_songwriter"
+CORPORATE_PRESENTATION = "corporate_presentation"
 ```
 
-### 2. `prompts/generate_music_prompt.md` (after line 150):
+### 2. `prompts/generate_music_prompt.md` (Section A):
 ```markdown
-### `acoustic_singer_songwriter`
-- primary_genre_family: Acoustic / Singer-Songwriter
-- genre_fusion_accent: None (pure genre)
-- mood_tonal_color: Intimate / Heartfelt
-- energy_curve: Gentle dynamics (quiet verses, slightly bigger choruses)
-- tempo_bpm: 80-100 BPM (choose a specific BPM)
-- key_tonality: Choose best-fitting key (often G, C, or D major)
-- groove_feel: Fingerpicking or gentle strumming
-- harmony_complexity: Folk/pop (open chords, occasional suspensions)
-- instrumentation_palette: Acoustic (acoustic guitar, light percussion, possibly strings or piano)
-- lead_focus: Vocal lead with acoustic guitar accompaniment
-- vocal_character: Warm & conversational
+### `corporate_presentation`
+- use_case_intent: Corporate deck / Conference presentation bed
+- duration: 120 seconds
+- looping_behavior: Loopable
+- structure_template: Ambient Evolution (steady, unobtrusive; no hard cuts)
+- vocal_mode: Instrumental only
+- vocal_timing_cue: (ignored)
 ```
 
-### 3. `testing/test_agents.py` (line 41):
-```python
-ACOUSTIC_SINGER_SONGWRITER = "acoustic_singer_songwriter"
-```
-
-### 4-6. Update all documentation files with user-friendly descriptions.
+### 3. Update the documentation files with user-friendly descriptions.
 
 ---
 
 ## Timeline Estimate
 
-- Code changes (Steps 1-3): ~15 minutes
-- Documentation updates (Steps 4-6): ~30 minutes
+- Code changes (Steps 1-2): ~15 minutes
+- Documentation updates (Step 3): ~30 minutes
 - Testing & validation: ~15 minutes
 - Total: ~1 hour per new preset

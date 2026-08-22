@@ -1,7 +1,14 @@
 # Frontend Update: Finetune Support
 
 **Audience:** the coding agent building/maintaining the frontend.
-**Companion to:** [`FRONTEND_API_GUIDE.md`](./FRONTEND_API_GUIDE.md) and [`RENDER_API.md`](./RENDER_API.md) — everything there is still accurate. This document is **purely additive**.
+**Companion to:** [`FRONTEND_API_GUIDE.md`](./FRONTEND_API_GUIDE.md) and [`RENDER_API.md`](./RENDER_API.md).
+
+> ⚠️ **Superseded in part.** This document was written when finetunes applied at **render only**.
+> `finetune_id` is now also **required on `POST /prompt`**, where it replaces the retired
+> `sound_profile` preset list. Read
+> [`FRONTEND_HANDOFF_SOUND_PROFILE.md`](./FRONTEND_HANDOFF_SOUND_PROFILE.md) first — it is the current
+> contract. Everything below about `GET /finetunes` and the `/render` fields is still accurate; only
+> the "not applicable to `/prompt`" claims are stale, and are corrected inline.
 
 ## TL;DR — what changed and what you must do
 
@@ -10,10 +17,13 @@ The backend now supports **ElevenLabs music finetunes** (genre/style-specialized
 1. **New endpoint `GET /finetunes`** returns the list of usable finetunes (id + name + genre/tags) so you can build a picker. No ElevenLabs API key is needed client-side — the backend proxies it.
 2. **`POST /render` (and the `/render/ws` WebSocket) now accept two optional fields:** `finetune_id` and `finetune_strength`. When present, the render is steered by that finetune.
 
-**There are no breaking changes.** Finetunes are entirely optional:
-- If you don't call `/finetunes`, nothing changes.
+**At render time, finetunes remain optional:**
 - If you omit `finetune_id` on `/render`, rendering behaves exactly as before.
-- The `/prompt` and `/plan` endpoints are **unaffected** — finetunes apply only at render time.
+- `POST /plan` is unaffected — it never takes a finetune.
+
+> **But `POST /prompt` now requires `finetune_id`** (see
+> [`FRONTEND_HANDOFF_SOUND_PROFILE.md`](./FRONTEND_HANDOFF_SOUND_PROFILE.md)). That *is* a breaking
+> change, and it means you must call `/finetunes` to build the wizard at all.
 
 **What you should build:**
 1. Fetch `GET /finetunes` and render a finetune picker (dropdown / searchable list). Include a "None" option.
@@ -24,13 +34,15 @@ The backend now supports **ElevenLabs music finetunes** (genre/style-specialized
 
 ## 1. Where finetunes fit in the pipeline
 
-The app is a three-stage pipeline. Finetunes attach at **render only**:
+The app is a three-stage pipeline. Finetunes attach at **both ends**:
 
 | Stage | Endpoint | Uses finetune? |
 | --- | --- | --- |
-| Prompt generation | `POST /prompt` | ❌ No |
+| Prompt generation | `POST /prompt` | ✅ **Yes — required** (`finetune_id`); its metadata drives the genre of the brief |
 | Composition plan | `POST /plan` | ❌ No |
-| **Render audio** | `POST /render` / `WS /render/ws` | ✅ **Yes** (`finetune_id`) |
+| **Render audio** | `POST /render` / `WS /render/ws` | ✅ **Yes — optional** (`finetune_id`); generates the audio |
+
+Send the **same** `finetune_id` to `/prompt` and `/render`, or the track won't match its own brief.
 
 **Important consequence for the plan-first workflow:** the composition plan does **not** carry the finetune. If a user picks a finetune and you generate a plan via `/plan`, the finetune is **not** stored in that plan and is **not** echoed back in the render response. **The frontend must hold the user's finetune choice and re-send `finetune_id` on the `/render` call.** Whether the user renders from a raw prompt or from a plan, the finetune is applied the same way — at render time.
 
@@ -227,8 +239,8 @@ Finetunes work identically over the streaming WebSocket path. The `finetune_id` 
 | List finetunes | `GET /finetunes?model_id=music_v2` |
 | Field to submit | `finetune_id` (from a finetune's `id`) |
 | Optional strength | `finetune_strength` (0.0–1.0, requires `finetune_id`) |
-| Applies at | `POST /render` and `WS /render/ws` only |
-| Not applicable to | `POST /prompt`, `POST /plan` |
+| Applies at | `POST /prompt` (**required**), `POST /render`, `WS /render/ws` (optional) |
+| Not applicable to | `POST /plan` |
 | Echoed in render response? | No — store client-side |
 | Force-fresh finetune list | `GET /finetunes?refresh=true` |
 | Interactive API docs | `GET /docs` (see the **Finetunes** and **Music Render** tags) |

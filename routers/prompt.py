@@ -25,25 +25,35 @@ tracer = trace.get_tracer(__name__)
     status_code=status.HTTP_200_OK,
     summary="Generate music prompt",
     description="""
-    Generate a high-quality music prompt for ElevenLabs music_v2 model based on
-    three preset selections: project blueprint, sound profile, and delivery & control.
-    
+    Generate a high-quality music prompt for ElevenLabs music_v2 model from two preset
+    selections (project blueprint, delivery & control) plus the finetune that will
+    render the track.
+
     The generated prompt is ready to be sent directly to the ElevenLabs music generation API.
-    
+
     ## Input Parameters
-    
+
     - **project_blueprint**: Defines the use case and structure (e.g., ad spot, podcast bed, video game loop)
-    - **sound_profile**: Defines the genre and sonic characteristics (e.g., bright pop, dark trap, lofi)
+    - **sound_profile**: Slug naming the ElevenLabs finetune used for rendering (e.g. `indie_dance`).
+      Not a fixed preset list — any finetune slug is valid.
+    - **finetune_id**: **Required.** Id of that finetune, from `GET /finetunes`. The server resolves it
+      into genre metadata (name, primary_genre, tags) and the agent derives tempo, groove and
+      instrumentation from it. Omitting it is a 422 — the genre is never guessed.
     - **delivery_and_control**: Defines workflow and output preferences (e.g., exploratory, balanced, blueprint-first)
     - **instrumental_only**: Optional override to force instrumental output regardless of blueprint
-    - **user_narrative**: Optional freeform story/occasion/people details to guide lyrics and vocal tone
-    
+    - **user_narrative**: Optional freeform story/occasion/people details to guide lyrics and vocal tone.
+      It governs lyrics and emotional intent, but never the genre — the finetune is authoritative there.
+
+    If the finetune cannot be resolved (deleted, or ElevenLabs unreachable), the request still
+    succeeds: a warning is logged and the agent infers the genre from the slug alone.
+
     ## Example Request
-    
+
     ```json
     {
       "project_blueprint": "ad_brand_fast_hook",
-      "sound_profile": "bright_pop_electro",
+      "sound_profile": "upbeat_pop",
+      "finetune_id": "gduoyhnzn5nvb246gg7i",
       "delivery_and_control": "balanced_studio",
       "instrumental_only": false,
       "user_narrative": null
@@ -63,7 +73,8 @@ tracer = trace.get_tracer(__name__)
                         "timestamp": "2025-12-22T10:30:00Z",
                         "input_parameters": {
                             "project_blueprint": "ad_brand_fast_hook",
-                            "sound_profile": "bright_pop_electro",
+                            "sound_profile": "upbeat_pop",
+                            "finetune_id": "gduoyhnzn5nvb246gg7i",
                             "delivery_and_control": "balanced_studio",
                             "instrumental_only": False,
                             "user_narrative": None
@@ -72,7 +83,7 @@ tracer = trace.get_tracer(__name__)
                 }
             }
         },
-        422: {"description": "Validation error - invalid input parameters"},
+        422: {"description": "Validation error - invalid input parameters, or 'finetune_id' missing"},
         500: {"description": "Internal server error during prompt generation"}
     }
 )
@@ -83,10 +94,10 @@ async def generate_prompt(
     """
     Generate a music prompt using the OpenAI Agents-based prompt generator.
     
-    This endpoint uses the three-choice wizard approach where users select from
-    predefined presets for project type, sound, and delivery preferences. The
-    system then uses an AI agent with expert music direction knowledge to
-    generate a comprehensive, paste-ready prompt for the ElevenLabs music_v2 model.
+    Users select presets for project type and delivery preferences, plus the finetune
+    that will render the track. The server resolves that finetune's metadata and an AI
+    agent with expert music direction knowledge derives the sonic attributes from it,
+    producing a comprehensive, paste-ready prompt for the ElevenLabs music_v2 model.
     
     Args:
         request_data: The prompt generation request with preset selections
@@ -103,7 +114,8 @@ async def generate_prompt(
     with tracer.start_as_current_span("generate_music_prompt") as span:
         # Add trace attributes
         span.set_attribute("prompt.project_blueprint", request_data.project_blueprint.value)
-        span.set_attribute("prompt.sound_profile", request_data.sound_profile.value)
+        span.set_attribute("prompt.sound_profile", request_data.sound_profile)
+        span.set_attribute("prompt.finetune_id", request_data.finetune_id)
         span.set_attribute("prompt.delivery_control", request_data.delivery_and_control.value)
         span.set_attribute("prompt.instrumental_only", request_data.instrumental_only)
         span.set_attribute("request.id", request_id)
@@ -116,7 +128,8 @@ async def generate_prompt(
                 extra={
                     "request_id": request_id,
                     "project_blueprint": request_data.project_blueprint.value,
-                    "sound_profile": request_data.sound_profile.value,
+                    "sound_profile": request_data.sound_profile,
+                    "finetune_id": request_data.finetune_id,
                     "delivery_and_control": request_data.delivery_and_control.value,
                     "instrumental_only": request_data.instrumental_only,
                     "user_narrative": request_data.user_narrative,

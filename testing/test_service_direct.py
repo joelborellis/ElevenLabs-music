@@ -12,7 +12,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from models.prompt import (
     PromptGenerationRequest,
     ProjectBlueprint,
-    SoundProfile,
     DeliveryAndControl
 )
 from services.prompt_generator import get_prompt_generator_service
@@ -28,7 +27,8 @@ async def test_service_directly():
     # Create a test request
     request = PromptGenerationRequest(
         project_blueprint=ProjectBlueprint.AD_BRAND_FAST_HOOK,
-        sound_profile=SoundProfile.BRIGHT_POP_ELECTRO,
+        sound_profile="upbeat_pop",
+        finetune_id="gduoyhnzn5nvb246gg7i",
         delivery_and_control=DeliveryAndControl.BALANCED_STUDIO,
         instrumental_only=False,
         user_narrative="I want a song to commemorate the engagement of my sone William."
@@ -36,7 +36,7 @@ async def test_service_directly():
     
     print("\nTest Request:")
     print(f"  Project: {request.project_blueprint.value}")
-    print(f"  Sound: {request.sound_profile.value}")
+    print(f"  Sound: {request.sound_profile} (finetune {request.finetune_id})")
     print(f"  Delivery: {request.delivery_and_control.value}")
     print(f"  Instrumental: {request.instrumental_only}")
     print(f"  User Narrative: {request.user_narrative}")

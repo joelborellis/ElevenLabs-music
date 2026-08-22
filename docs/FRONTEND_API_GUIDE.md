@@ -5,7 +5,7 @@ This document describes every backend endpoint the frontend can use — inputs, 
 > Source of truth: this reflects the FastAPI backend in this repo. A live, always-current schema is also available at **`/openapi.json`** and interactive docs at **`/docs`** when the server is running — you can generate a typed client from the former.
 
 > **Companion docs:**
-> - [`FRONTEND_FINETUNES.md`](./FRONTEND_FINETUNES.md) — the `GET /finetunes` endpoint and the optional `finetune_id` / `finetune_strength` fields on `/render`.
+> - [`FRONTEND_FINETUNES.md`](./FRONTEND_FINETUNES.md) — the `GET /finetunes` endpoint and the `finetune_id` / `finetune_strength` fields on `/render`. **Read this first:** `finetune_id` is now also **required** on `/prompt`, where it replaces the retired `sound_profile` preset list.
 > - [`FRONTEND_API_CHANGES_STORAGE.md`](./FRONTEND_API_CHANGES_STORAGE.md) — render `id`s and Blob/DB storage (supersedes the `/render` response shape below).
 
 ---
@@ -45,10 +45,15 @@ The app is a three-stage pipeline. Each stage is a separate endpoint, and the ou
 ```
    ┌─────────────┐        ┌───────────┐        ┌─────────────┐
    │ POST /prompt│  ───►  │ POST /plan│  ───►  │ POST /render│  ───►  audio file
-   │ presets →   │ prompt │ prompt →  │  plan  │ plan/prompt │  (mp3, download/stream)
-   │ prompt text │        │ comp plan │        │ → audio     │
+   │ presets +   │ prompt │ prompt →  │  plan  │ plan/prompt │  (mp3, download/stream)
+   │ finetune →  │        │ comp plan │        │ + finetune  │
+   │ prompt text │        │           │        │ → audio     │
    └─────────────┘        └───────────┘        └─────────────┘
+         ▲                                            ▲
+         └──────── GET /finetunes (style picker) ─────┘
 ```
+
+The finetune the user picks feeds **both ends**: `/prompt` uses its metadata to write a genre-accurate brief, and `/render` uses the finetune itself to generate the audio. Send the same `finetune_id` to both.
 
 **Two important flexibilities for your UX design:**
 
@@ -68,27 +73,34 @@ Approximate latencies to design loading states around:
 
 ### 3.1 `POST /prompt` — Generate a music prompt from preset selections
 
-Turns the "three-choice wizard" selections into a polished prompt (plus a title and description).
+Turns the wizard selections into a polished prompt (plus a title and description).
 
 **Request body**
 
 | Field | Type | Required | Default | Notes |
 | --- | --- | --- | --- | --- |
-| `project_blueprint` | enum (string) | ✅ | — | Use case / structure. See table below. |
-| `sound_profile` | enum (string) | ✅ | — | Genre / sonic character. See table below. |
-| `delivery_and_control` | enum (string) | ✅ | — | Workflow / output style. See table below. |
+| `project_blueprint` | enum (string) | ✅ | — | Use case / structure. Closed set — see table below. |
+| `sound_profile` | string | ✅ | — | Slug naming the finetune that will render the track, e.g. `indie_dance`. **Not an enum** — any slug is accepted. |
+| `finetune_id` | string | ✅ | — | The finetune's id, from `GET /finetunes`. Omitting it is a `422`. |
+| `delivery_and_control` | enum (string) | ✅ | — | Workflow / output style. Closed set — see table below. |
 | `instrumental_only` | boolean | ❌ | `false` | Force instrumental regardless of blueprint. |
 | `user_narrative` | string \| null | ❌ | `null` | Freeform story/occasion/people to shape lyrics & tone. May contain URLs (the agent will fetch them). |
 
+**Where `sound_profile` / `finetune_id` come from:** call `GET /finetunes` (documented in [`FRONTEND_FINETUNES.md`](./FRONTEND_FINETUNES.md)) and let the user pick one. Send its `id` as `finetune_id` and a slug of its `name` as `sound_profile`. The server resolves the id back to the finetune's real `name` / `primary_genre` / `tags` and the agent derives tempo, groove, instrumentation and vocal character from that — so genre comes from a trained model, not a hand-written preset.
+
+Pass the **same** `finetune_id` on to `/render` so the track is actually rendered in the style the prompt describes.
+
+> **Don't describe the finetune in `user_narrative`.** The backend already supplies its metadata to the agent; repeating it in prose duplicates that context and can leak tooling language into the output. Use `user_narrative` for story, names and occasion only — it never overrides genre.
+
 **Preset enum values** (use these exact string IDs; build your wizard UI from them):
 
-| `project_blueprint` | `sound_profile` | `delivery_and_control` |
-| --- | --- | --- |
-| `ad_brand_fast_hook` | `bright_pop_electro` | `exploratory_iterate` |
-| `podcast_voiceover_loop` | `dark_trap_night` | `balanced_studio` |
-| `video_game_action_loop` | `lofi_cozy` | `blueprint_plan_first` |
-| `meditation_sleep` | `epic_cinematic` | `live_one_take` |
-| `standalone_song_mini` | `indie_live_band` | `isolation_stems` |
+| `project_blueprint` | `delivery_and_control` |
+| --- | --- |
+| `ad_brand_fast_hook` | `exploratory_iterate` |
+| `podcast_voiceover_loop` | `balanced_studio` |
+| `video_game_action_loop` | `blueprint_plan_first` |
+| `meditation_sleep` | `live_one_take` |
+| `standalone_song_mini` | `isolation_stems` |
 
 **Response `200`**
 
@@ -101,7 +113,8 @@ Turns the "three-choice wizard" selections into a polished prompt (plus a title 
   "timestamp": "2025-12-22T10:30:00Z",
   "input_parameters": {                                           // echoes what you sent
     "project_blueprint": "ad_brand_fast_hook",
-    "sound_profile": "bright_pop_electro",
+    "sound_profile": "upbeat_pop",
+    "finetune_id": "gduoyhnzn5nvb246gg7i",
     "delivery_and_control": "balanced_studio",
     "instrumental_only": false,
     "user_narrative": null
@@ -344,16 +357,14 @@ Drop-in starting point for the frontend (adjust as your client evolves):
 export type ProjectBlueprint =
   | "ad_brand_fast_hook" | "podcast_voiceover_loop" | "video_game_action_loop"
   | "meditation_sleep" | "standalone_song_mini";
-export type SoundProfile =
-  | "bright_pop_electro" | "dark_trap_night" | "lofi_cozy"
-  | "epic_cinematic" | "indie_live_band";
 export type DeliveryAndControl =
   | "exploratory_iterate" | "balanced_studio" | "blueprint_plan_first"
   | "live_one_take" | "isolation_stems";
 
 export interface PromptRequest {
   project_blueprint: ProjectBlueprint;
-  sound_profile: SoundProfile;
+  sound_profile: string;            // finetune slug, e.g. "indie_dance" — open-ended, not a union
+  finetune_id: string;              // required; id from GET /finetunes
   delivery_and_control: DeliveryAndControl;
   instrumental_only?: boolean;      // default false
   user_narrative?: string | null;   // default null
@@ -424,15 +435,16 @@ export type WsServerMessage = WsProgress | WsResult | WsError;
 ## 6. Recommended frontend flows
 
 **Flow A — Guided wizard (most control):**
-1. Wizard screens collect the three presets + optional instrumental toggle + optional narrative → `POST /prompt`.
-2. Show generated `prompt`/`title`/`description`; let the user tweak the prompt text.
-3. `POST /plan` → render an editable list of chunks (sections).
-4. User reviews/edits chunks → open a WebSocket to `/render/ws`, send `{ type: "render", composition_plan: { title, chunks } }`.
-5. Drive a progress bar from `progress` messages; on `result`, play via `stream_url` and offer `download_url`.
+1. Load `GET /finetunes?model_id=music_v2` once and cache it; the style-picker screen renders from it.
+2. Wizard screens collect the two presets + the picked finetune (`sound_profile` slug + `finetune_id`) + optional instrumental toggle + optional narrative → `POST /prompt`.
+3. Show generated `prompt`/`title`/`description`; let the user tweak the prompt text.
+4. `POST /plan` → render an editable list of chunks (sections).
+5. User reviews/edits chunks → open a WebSocket to `/render/ws`, send `{ type: "render", composition_plan: { title, chunks }, finetune_id }` — **the same `finetune_id` from step 2**.
+6. Drive a progress bar from `progress` messages; on `result`, play via `stream_url` and offer `download_url`.
 
 **Flow B — Quick generate (fewer steps):**
-1. Presets/narrative → `POST /prompt`.
-2. `/render/ws` in **prompt mode**: send `{ type: "render", composition_plan: { title, prompt, music_length_ms } }` (skip `/plan`).
+1. Presets + finetune + narrative → `POST /prompt`.
+2. `/render/ws` in **prompt mode**: send `{ type: "render", composition_plan: { title, prompt, music_length_ms }, finetune_id }` (skip `/plan`).
 3. Progress → `result` → play/download.
 
 **Flow C — Power user / direct:**
@@ -442,4 +454,5 @@ export type WsServerMessage = WsProgress | WsResult | WsError;
 - Long operations: always use `/render/ws` for the render step so users see progress; disable submit while in-flight.
 - Persist `request_id`s from responses/errors for support.
 - Playback: use `stream_url` in an `<audio>` element; use `download_url` for saving.
-- Validation mirroring: enforce the mutual-exclusivity and duration rules client-side (§3.3) to avoid round-trip `422`s.
+- Validation mirroring: enforce the mutual-exclusivity and duration rules client-side (§3.3) to avoid round-trip `422`s. Also guard that a finetune is selected before submitting `/prompt` — a missing `finetune_id` is a `422`.
+- Keep `finetune_id` in wizard state from the picker all the way through to `/render`; a prompt written for one style and rendered with another (or none) is the main way this flow goes wrong.

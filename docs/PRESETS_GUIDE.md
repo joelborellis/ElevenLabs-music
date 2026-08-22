@@ -1,16 +1,18 @@
 # Music Creation Presets Guide
 
-Welcome! This guide will help you understand how to create the perfect music for your needs using our simple three-choice system. You don't need to be a musician or tech expert—just pick the options that match what you're looking for, and our AI will handle the rest.
+Welcome! This guide will help you understand how to create the perfect music for your needs. You don't need to be a musician or tech expert—just pick the options that match what you're looking for, and our AI will handle the rest.
 
 ---
 
 ## How It Works
 
-Creating music is as simple as making **three choices**:
+Creating music comes down to three things:
 
-1. **Project Blueprint** – What are you making this music for?
-2. **Sound Profile** – What should it sound like?
-3. **Delivery & Control** – How creative or precise should the AI be?
+1. **Project Blueprint** – What are you making this music for? *(pick from a list)*
+2. **Your Sound** – What should it sound like? *(pick a style from the library)*
+3. **Delivery & Control** – How creative or precise should the AI be? *(pick from a list)*
+
+Blueprint and Delivery are short fixed lists, covered below. Your Sound works differently: you pick a **style model** from a library that grows over time, rather than one of a handful of built-in genres.
 
 Plus, you can add a **User Narrative** to personalize your music with your own story, names, or special occasion.
 
@@ -122,113 +124,41 @@ The Project Blueprint determines the length, structure, and overall purpose of y
 
 ---
 
-## 🎵 Choice 2: Sound Profile
+## 🎵 Your Sound: pick a style
 
 **Think of this as:** *"What genre and mood do I want?"*
 
-The Sound Profile determines the overall vibe, genre, and emotional feel of your music.
+This is **not** a preset list. Your sound comes from an ElevenLabs **finetune** — a model trained on real music in a particular style. It decides the genre, tempo, groove and instrumentation of your track, and it's what actually generates the audio at the end.
 
-### Option 1: `bright_pop_electro` — Upbeat Electronic Pop
-**Mood:** Happy, energetic, uplifting
+### Why it isn't a fixed menu
 
-| Sound Characteristics |  |
-|-----------------------|--|
-| **Genre** | Electronic pop / EDM |
-| **Tempo** | 110-125 BPM (moderate to upbeat) |
-| **Feeling** | Euphoric, celebratory, feel-good |
-| **Instruments** | Punchy drums, bright synths, clean bass |
+New finetunes appear (and old ones retire) in ElevenLabs all the time, so there's no list to memorize here — the app fetches the current ones from `GET /finetunes` and shows them in a picker. As of writing, that includes things like Indie Dance, Deep House Groove, Relaxing Ambient, Emotional Piano, 18th Century Symphony, Reggaeton, Metal, Country and dozens more.
 
-**When to choose this:**
-- You want something that makes people feel happy
-- You need energetic, danceable music
-- You're creating celebratory or positive content
-- You want a modern, polished pop sound
+### What you send
 
-**What this does to your music:** Creates bright, shimmering electronic music that builds to exciting drops and recovers into catchy melodies. Think: the kind of music you'd hear in an uplifting commercial or a happy social media video.
+Two fields travel together:
 
----
+| Field | What it is | Example |
+|---|---|---|
+| `sound_profile` | A slug of the finetune's name | `indie_dance` |
+| `finetune_id` | That finetune's id, from the picker | `aslj0pdvdods2agammwb` |
 
-### Option 2: `dark_trap_night` — Dark Hip-Hop/Trap
-**Mood:** Intense, moody, mysterious
+`finetune_id` is **required**. If it's missing the request is rejected — the app will never quietly pick a genre for you.
 
-| Sound Characteristics |  |
-|-----------------------|--|
-| **Genre** | Hip-Hop / Trap |
-| **Tempo** | 145-170 BPM (but feels slower due to half-time groove) |
-| **Feeling** | Dark, tense, edgy |
-| **Instruments** | Deep 808 bass, crisp hi-hats, atmospheric textures |
+### What happens with it
 
-**When to choose this:**
-- You want something with attitude and edge
-- You're creating content with a darker, moodier vibe
-- You need music that feels urban and contemporary
-- You want something that sounds "cool" and intense
+The backend looks the finetune up and reads its real genre and tags — for Indie Dance, that's a primary genre of *Indie* and tags *Electronic, House, Nu-Disco, Deep House, Dance*. The AI then works out the specifics that used to be hard-coded in a preset: a specific BPM, a key, a groove feel, a harmonic style, an instrument palette, and a vocal character — all idiomatic to that style.
 
-**What this does to your music:** Creates heavy, bass-driven music with a menacing atmosphere. The beat hits hard but has a laid-back swagger. Expect deep bass, crispy percussion, and dark textures.
+So the style you pick genuinely changes the music. The same story rendered through Deep House Groove and through Emotional Piano gives you two very different tracks, not the same track with a different label.
+
+### Two things worth knowing
+
+- **The finetune owns the genre.** If you pick a metal finetune and write a narrative about a quiet lullaby, you get metal — the words shape the *lyrics and feeling*, not the genre. Pick the style that matches the sound you want.
+- **The style is never named in the output.** Your prompt, title and description describe the *music* ("four-on-the-floor nu-disco with filtered guitar stabs"), never the tool that made it.
 
 ---
 
-### Option 3: `lofi_cozy` — Chill Lo-Fi
-**Mood:** Relaxed, cozy, nostalgic
-
-| Sound Characteristics |  |
-|-----------------------|--|
-| **Genre** | Lo-fi / Chillhop |
-| **Tempo** | 85-105 BPM (slow and relaxed) |
-| **Feeling** | Warm, intimate, comfortable |
-| **Instruments** | Soft drums, warm piano/keys, gentle bass |
-
-**When to choose this:**
-- You want background music for studying or working
-- You need something cozy and unobtrusive
-- You're creating content with a nostalgic or intimate feel
-- You want music that feels like a rainy day with a cup of coffee
-
-**What this does to your music:** Creates warm, slightly imperfect-sounding music with a gentle swing feel. The "lo-fi" quality adds character and nostalgia—like listening to an old record. Perfect for relaxation without putting you to sleep.
-
----
-
-### Option 4: `epic_cinematic` — Movie Soundtrack Epic
-**Mood:** Grand, heroic, emotional
-
-| Sound Characteristics |  |
-|-----------------------|--|
-| **Genre** | Cinematic / Orchestral + Electronic |
-| **Tempo** | 110-125 BPM |
-| **Feeling** | Epic, powerful, inspiring |
-| **Instruments** | Strings, brass, electronic pulses, big percussion |
-
-**When to choose this:**
-- You want music that feels like a movie soundtrack
-- You need something grand and inspiring
-- You're creating content with dramatic moments
-- You want to evoke powerful emotions
-
-**What this does to your music:** Creates sweeping, cinematic music that builds from subtle beginnings to powerful crescendos. Think: epic trailer music, documentary scores, or heroic moments. Combines orchestral instruments with modern electronic elements for a hybrid sound.
-
----
-
-### Option 5: `indie_live_band` — Live Band Feel
-**Mood:** Authentic, warm, human
-
-| Sound Characteristics |  |
-|-----------------------|--|
-| **Genre** | Indie / Rock / Live Band |
-| **Tempo** | 85-105 BPM |
-| **Feeling** | Real, organic, emotional |
-| **Instruments** | Real drums, bass, guitars, keys |
-
-**When to choose this:**
-- You want music that sounds like a real band playing
-- You prefer organic, human-sounding music over electronic
-- You're creating content with an authentic, down-to-earth vibe
-- You want something that builds from quiet to big
-
-**What this does to your music:** Creates music that sounds like it was performed by actual musicians in a room together. Starts intimate and quiet, then builds to an emotionally satisfying finish. Expect guitars, drums, bass, and keys with real human feel and imperfections.
-
----
-
-## 🎛️ Choice 3: Delivery & Control
+## 🎛️ Choice 2: Delivery & Control
 
 **Think of this as:** *"How much creative freedom should the AI have?"*
 
@@ -395,26 +325,18 @@ The AI will automatically remove such information if you accidentally include it
 
 ### By Use Case
 
-| I want to create... | Project Blueprint | Sound Profile | Delivery & Control |
-|---------------------|-------------------|---------------|-------------------|
-| A social media ad | `ad_brand_fast_hook` | `bright_pop_electro` | `balanced_studio` |
-| Podcast background music | `podcast_voiceover_loop` | `lofi_cozy` | `exploratory_iterate` |
-| Gaming video music | `video_game_action_loop` | `dark_trap_night` | `blueprint_plan_first` |
-| Meditation/sleep track | `meditation_sleep` | `lofi_cozy` | `exploratory_iterate` |
-| A song for someone special | `standalone_song_mini` | `indie_live_band` | `balanced_studio` |
-| Epic trailer music | `video_game_action_loop` | `epic_cinematic` | `blueprint_plan_first` |
-| Chill study music | `podcast_voiceover_loop` | `lofi_cozy` | `exploratory_iterate` |
-| Birthday song with lyrics | `standalone_song_mini` | `bright_pop_electro` | `balanced_studio` |
+| I want to create... | Project Blueprint | Delivery & Control | Look for a style like... |
+|---------------------|-------------------|--------------------|--------------------------|
+| A social media ad | `ad_brand_fast_hook` | `balanced_studio` | upbeat pop, dance |
+| Podcast background music | `podcast_voiceover_loop` | `exploratory_iterate` | lo-fi, ambient |
+| Gaming video music | `video_game_action_loop` | `blueprint_plan_first` | trap, bass techno |
+| Meditation/sleep track | `meditation_sleep` | `exploratory_iterate` | ambient, emotional piano |
+| A song for someone special | `standalone_song_mini` | `balanced_studio` | indie guitar, soul |
+| Epic trailer music | `video_game_action_loop` | `blueprint_plan_first` | cinematic, orchestral |
+| Chill study music | `podcast_voiceover_loop` | `exploratory_iterate` | lo-fi, jazz hop |
+| Birthday song with lyrics | `standalone_song_mini` | `balanced_studio` | commercial pop, nu-disco |
 
-### By Mood
-
-| I want music that feels... | Best Sound Profile |
-|---------------------------|-------------------|
-| Happy and uplifting | `bright_pop_electro` |
-| Dark and intense | `dark_trap_night` |
-| Calm and cozy | `lofi_cozy` |
-| Epic and powerful | `epic_cinematic` |
-| Authentic and human | `indie_live_band` |
+The last column is a hint for browsing the style picker, not a fixed value — search it for those words and pick whatever's available and appeals to you.
 
 ---
 
@@ -423,7 +345,7 @@ The AI will automatically remove such information if you accidentally include it
 **When in doubt, try these defaults:**
 
 - **Project Blueprint:** `standalone_song_mini` (for a complete song) or `podcast_voiceover_loop` (for background music)
-- **Sound Profile:** `lofi_cozy` (works for almost everything)
+- **Your Sound:** browse the picker and choose the style whose name you'd use to describe the music to a friend. There's no "safe default" here — this is the choice that most changes how your track sounds, so it's worth a moment.
 - **Delivery & Control:** `balanced_studio` (the reliable choice)
 
 Remember: There are no wrong choices! Each combination creates different music, so feel free to experiment and find what sounds best to you.
