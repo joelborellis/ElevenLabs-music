@@ -32,7 +32,7 @@ def test_list_finetunes():
     assert "finetunes" in data, "Response missing 'finetunes'"
     assert "count" in data, "Response missing 'count'"
 
-    for ft in data["finetunes"][:5]:
+    for ft in data["finetunes"][:data.get('count')]:
         print(f"  - {ft['id']} | {ft.get('name')} | {ft.get('primary_genre')}")
         assert ft.get("id"), "Finetune missing 'id'"
         # only_completed default -> all returned should be usable
