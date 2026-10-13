@@ -25,7 +25,7 @@ tracer = trace.get_tracer(__name__)
     status_code=status.HTTP_200_OK,
     summary="Generate music prompt",
     description="""
-    Generate a high-quality music prompt for ElevenLabs music_v2 model from two preset
+    Generate a high-quality music prompt for ElevenLabs music_v2_5 model from two preset
     selections (project blueprint, delivery & control) plus the finetune that will
     render the track.
 
@@ -97,7 +97,7 @@ async def generate_prompt(
     Users select presets for project type and delivery preferences, plus the finetune
     that will render the track. The server resolves that finetune's metadata and an AI
     agent with expert music direction knowledge derives the sonic attributes from it,
-    producing a comprehensive, paste-ready prompt for the ElevenLabs music_v2 model.
+    producing a comprehensive, paste-ready prompt for the ElevenLabs music_v2_5 model.
     
     Args:
         request_data: The prompt generation request with preset selections

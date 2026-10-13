@@ -4,7 +4,6 @@ Test script for the /render endpoint.
 Optionally exercise the ElevenLabs finetune by passing a finetune id at runtime:
 
     uv run python testing/test_render_endpoint.py --finetune-id <id>
-    uv run python testing/test_render_endpoint.py --finetune-id <id> --finetune-strength 0.8
 
 When no finetune id is given the tests run exactly as before (no finetune).
 Finetune ids can be listed in testing/finetunes.json.
@@ -20,25 +19,19 @@ BASE_URL = "http://localhost:8000"
 # Populated from CLI args in __main__. When FINETUNE_ID is None, render payloads
 # are sent unchanged (no finetune) so existing behavior is preserved.
 FINETUNE_ID: str | None = None
-FINETUNE_STRENGTH: float | None = None
 
 
 def _with_finetune(payload: dict) -> dict:
-    """Return a copy of a render payload with finetune fields added if configured.
+    """Return a copy of a render payload with finetune_id added if configured.
 
-    finetune_id / finetune_strength map directly to the /render request body
-    (compose_detailed). Only applied when a finetune id was passed at runtime.
+    finetune_id maps directly to the /render request body (compose_detailed).
+    Only applied when a finetune id was passed at runtime.
     """
     if not FINETUNE_ID:
         return payload
     enriched = dict(payload)
     enriched["finetune_id"] = FINETUNE_ID
-    if FINETUNE_STRENGTH is not None:
-        enriched["finetune_strength"] = FINETUNE_STRENGTH
-    print(
-        f"  [finetune] finetune_id={FINETUNE_ID}"
-        + (f", finetune_strength={FINETUNE_STRENGTH}" if FINETUNE_STRENGTH is not None else "")
-    )
+    print(f"  [finetune] finetune_id={FINETUNE_ID}")
     return enriched
 
 # Render request payloads live in this JSON file so variations can be changed
@@ -426,25 +419,14 @@ def _parse_args() -> argparse.Namespace:
         default=None,
         help="ElevenLabs finetune id to apply to render calls (see testing/finetunes.json).",
     )
-    parser.add_argument(
-        "--finetune-strength",
-        type=float,
-        default=None,
-        help="Finetune influence 0.0-1.0 (only used with --finetune-id).",
-    )
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = _parse_args()
     FINETUNE_ID = args.finetune_id
-    FINETUNE_STRENGTH = args.finetune_strength
-
-    if FINETUNE_STRENGTH is not None and not FINETUNE_ID:
-        raise SystemExit("--finetune-strength requires --finetune-id")
 
     if FINETUNE_ID:
-        print(f"Applying finetune to render calls: {FINETUNE_ID}"
-              + (f" (strength={FINETUNE_STRENGTH})" if FINETUNE_STRENGTH is not None else ""))
+        print(f"Applying finetune to render calls: {FINETUNE_ID}")
 
     run_all_tests()

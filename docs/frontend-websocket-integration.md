@@ -154,7 +154,7 @@ interface RenderRequest {
   type: "render";
   composition_plan: {
     title?: string;        // Optional title for output filename
-    chunks: Chunk[];       // Array of chunks (music_v2 format)
+    chunks: Chunk[];       // Array of chunks (music_v2_5 format)
   };
 }
 

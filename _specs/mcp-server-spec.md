@@ -12,8 +12,8 @@ This document is self-contained. Every data model, service behavior, external AP
 
 Keepsong is a four-stage AI music generation pipeline:
 
-1. **Prompt** — turns a three-choice preset selection (+ optional freeform narrative) into a polished text prompt for ElevenLabs' `music_v2` model, using an LLM agent with web search.
-2. **Plan** — turns a text prompt into a structured, section-by-section composition plan (a `music_v2` "recipe").
+1. **Prompt** — turns a three-choice preset selection (+ optional freeform narrative) into a polished text prompt for ElevenLabs' `music_v2_5` model, using an LLM agent with web search.
+2. **Plan** — turns a text prompt into a structured, section-by-section composition plan (a `music_v2_5` "recipe").
 3. **Render** — turns a prompt or composition plan into actual audio, via ElevenLabs, with the result persisted to blob storage + a metadata database.
 4. **Finetune** — lists ElevenLabs "finetunes" (custom-trained style models) that can optionally steer a render.
 
@@ -126,7 +126,7 @@ interface PromptGenerationRequest {
 
 // Structured output the LLM agent is constrained to produce.
 interface AgentPromptOutput {
-  prompt: string;       // the full music_v2 prompt text
+  prompt: string;       // the full music_v2_5 prompt text
   title: string;        // 3-6 words
   description: string;  // 1-2 sentences
 }
@@ -171,18 +171,18 @@ const PromptGenerationRequestSchema = z.object({
 ### 3.2 Plan stage (`models/plan.py`)
 
 ```typescript
-// A single section of a music_v2 composition plan.
+// A single section of a music_v2_5 composition plan.
 // IMPORTANT: the Python model uses `extra="allow"` — unknown fields (e.g. a
 // future `conditioning_ref`, `condition_strength`) are preserved, not dropped.
 // The zod schema MUST be `.passthrough()`, not a closed object, or future
-// music_v2 fields will silently vanish.
+// music_v2_5 fields will silently vanish.
 interface Chunk {
   text: string;                    // section marker and/or lyrics, e.g. "[Intro]"; default ""
   positive_styles: string[];       // style descriptors to include; default []
   negative_styles: string[];       // style descriptors to avoid; default []
   duration_ms: number;             // required, no default
   context_adherence?: string | null; // e.g. "high"
-  [key: string]: unknown;          // passthrough for any other music_v2 fields
+  [key: string]: unknown;          // passthrough for any other music_v2_5 fields
 }
 
 interface CompositionPlanResponse {
@@ -226,9 +226,8 @@ interface RenderRequest {
   music_length_ms?: number | null; // 3000-600000; only valid together with `prompt`
 
   // --- compose_detailed passthrough params ---
-  model_id: string;                 // default "music_v2"
+  model_id: string;                 // default "music_v2_5"
   finetune_id?: string | null;      // works in both prompt and chunks mode
-  finetune_strength?: number | null; // 0.0-1.0; only valid together with finetune_id
   force_instrumental: boolean;      // default false
   store_for_inpainting: boolean;    // default false
   with_timestamps: boolean;         // default false
@@ -245,7 +244,6 @@ interface RenderRequest {
 **Validation rules (must be reproduced exactly — currently enforced by a Pydantic `@model_validator`):**
 1. Exactly one of `prompt` / `chunks` must be set (both set → error; neither set → error).
 2. `music_length_ms` may only be set together with `prompt`.
-3. `finetune_strength` may only be set together with `finetune_id`.
 
 Zod equivalent using `superRefine` (Pydantic's `mode="after"` validator has no single-expression zod equivalent, so use a refine step):
 
@@ -254,9 +252,8 @@ const RenderRequestSchema = z.object({
   prompt: z.string().nullish(),
   chunks: z.array(ChunkSchema).default([]),
   music_length_ms: z.number().int().min(3000).max(600000).nullish(),
-  model_id: z.string().default("music_v2"),
+  model_id: z.string().default("music_v2_5"),
   finetune_id: z.string().nullish(),
-  finetune_strength: z.number().min(0).max(1).nullish(),
   force_instrumental: z.boolean().default(false),
   store_for_inpainting: z.boolean().default(false),
   with_timestamps: z.boolean().default(false),
@@ -274,9 +271,6 @@ const RenderRequestSchema = z.object({
   }
   if (val.music_length_ms != null && !hasPrompt) {
     ctx.addIssue({ code: "custom", message: "'music_length_ms' can only be used together with 'prompt'." });
-  }
-  if (val.finetune_strength != null && !val.finetune_id) {
-    ctx.addIssue({ code: "custom", message: "'finetune_strength' can only be used together with 'finetune_id'." });
   }
 });
 ```
@@ -300,7 +294,7 @@ interface RenderResponse {
 }
 ```
 
-`to_compose_kwargs()` — the request-to-API-call mapping (`models/render.py:108-142`) — must be ported as a plain function. Key rules: `output_format` is included only if set (so the API applies its own default); `finetune_id`/`finetune_strength` included only if set; if `prompt` is set, send `{prompt, music_length_ms?}`; otherwise send `{composition_plan: {chunks: [...]}}`. `title` is **never** sent to ElevenLabs.
+`to_compose_kwargs()` — the request-to-API-call mapping (`models/render.py:108-142`) — must be ported as a plain function. Key rules: `output_format` is included only if set (so the API applies its own default); `finetune_id` included only if set; if `prompt` is set, send `{prompt, music_length_ms?}`; otherwise send `{composition_plan: {chunks: [...]}}`. `title` is **never** sent to ElevenLabs.
 
 ### 3.4 WebSocket / progress message models (`models/websocket.py`)
 
@@ -380,7 +374,7 @@ interface RenderRow {
 }
 ```
 
-Audio bytes never touch this table — only a `blob_key` reference. Note: `finetune_id`/`finetune_strength` used for a render are **not currently persisted anywhere** — this is a gap in the Python app; the Node port should add these two columns since they're relevant provenance.
+Audio bytes never touch this table — only a `blob_key` reference. Note: the `finetune_id` used for a render is **not currently persisted anywhere** — this is a gap in the Python app; the Node port should add this column since they're relevant provenance.
 
 ---
 
@@ -409,7 +403,7 @@ Audio bytes never touch this table — only a `blob_key` reference. Note: `finet
    1. `request.music_length_ms` if explicitly provided.
    2. Else, regex-extracted from the prompt text: pattern `(\d+(\.\d+)?)\s*[-\s]?\s*seconds?` tried first, then `(\d+(\.\d+)?)\s*[-\s]?\s*minutes?` — case-insensitive. Matches things like `"30-second"`, `"30 seconds"`, `"2 minutes"`, `"1.5 minute"`. Result clamped to `[1000, 300000]` ms.
    3. Else, default `30000` ms.
-2. Calls ElevenLabs `music.composition_plan.create(prompt, music_length_ms, model_id="music_v2")`.
+2. Calls ElevenLabs `music.composition_plan.create(prompt, music_length_ms, model_id="music_v2_5")`.
 3. Maps each returned chunk into the `Chunk` shape (`text`, `positive_styles`, `negative_styles`, `duration_ms`, `context_adherence`) — this is a plain field copy, not a transformation.
 4. Any exception → `RuntimeError(f"Composition plan generation failed: {e}")`.
 
@@ -441,12 +435,12 @@ Audio bytes never touch this table — only a `blob_key` reference. Note: `finet
 
 **The finetune / multipart workaround (`_compose`, `services/render_service.py:145-174`) — port this behavior exactly, or verify it's unnecessary in Node before dropping it:**
 
-The installed ElevenLabs Python SDK's `MusicClient.compose_detailed` wrapper method only forwards a fixed, hardcoded subset of parameters to the underlying HTTP call — `finetune_id` and `finetune_strength` land in its `**kwargs` and are **silently discarded**, never reaching the API. When either parameter is present, the Python code bypasses the wrapper entirely and calls the SDK's raw autogenerated client directly (`client.music._raw_client.compose_detailed(**raw_kwargs)`), which:
+The installed ElevenLabs Python SDK's `MusicClient.compose_detailed` wrapper method only forwards a fixed, hardcoded subset of parameters to the underlying HTTP call — `finetune_id` lands in its `**kwargs` and is **silently discarded**, never reaching the API. When it is present, the Python code bypasses the wrapper entirely and calls the SDK's raw autogenerated client directly (`client.music._raw_client.compose_detailed(**raw_kwargs)`), which:
 - Requires renaming `sign_with_c2pa` → `sign_with_c_2_pa` (the raw client's Fern-codegen-mangled parameter name — a Python-SDK-internal artifact, **not** a wire/API concept; the actual ElevenLabs HTTP API almost certainly expects `sign_with_c2pa` untranslated — verify this against the live API/API reference before implementing, don't assume).
 - Returns a raw HTTP response object (`r`) that must be parsed with the wrapper's private multipart parser (`music._parse_multipart(r.data)`) to reconstruct the same `track_details`-shaped object the normal path would have returned.
 - Requires manually pulling the `song-id` response header into the result object (`result.song_id = r.headers.get("song-id")`), since the raw path doesn't do this automatically.
 
-**For the Node port:** the `@elevenlabs/elevenlabs-js` SDK is generated from the same Fern pipeline as the Python SDK, so the same defect (dropped `finetune_id`/`finetune_strength`) is plausible but unconfirmed. Do not assume either way — write a smoke test against the live API early in implementation that calls `compose_detailed` with a real `finetune_id` through the JS wrapper and inspects whether the finetune actually influenced output / whether the field survives to the request. Ship with a raw-HTTP fallback path (Node's built-in `fetch`, using `await response.formData()` to parse the multipart response — audio bytes + JSON metadata in one payload — and `response.headers.get('song-id')` for the header) ready to use if the wrapper turns out to have the same bug, rather than discovering it after shipping.
+**For the Node port:** the `@elevenlabs/elevenlabs-js` SDK is generated from the same Fern pipeline as the Python SDK, so the same defect (dropped `finetune_id`) is plausible but unconfirmed. Do not assume either way — write a smoke test against the live API early in implementation that calls `compose_detailed` with a real `finetune_id` through the JS wrapper and inspects whether the finetune actually influenced output / whether the field survives to the request. Ship with a raw-HTTP fallback path (Node's built-in `fetch`, using `await response.formData()` to parse the multipart response — audio bytes + JSON metadata in one payload — and `response.headers.get('song-id')` for the header) ready to use if the wrapper turns out to have the same bug, rather than discovering it after shipping.
 
 **Response shape from `compose_detailed`** (referenced as `track_details` in the Python code): has at least `.filename`, `.audio` (raw bytes), `.json` (dict with optional `composition_plan` / `song_metadata` keys), and (raw-client path only) `.song_id`. The exact full field list isn't enumerated in the Python code (it logs all non-callable public attributes for debugging but doesn't consume most of them) — treat this as "whatever the multipart response contains," and confirm the precise shape against ElevenLabs' current API reference at implementation time.
 
@@ -481,12 +475,12 @@ The installed ElevenLabs Python SDK's `MusicClient.compose_detailed` wrapper met
 
 ## 5. ElevenLabs API Integration
 
-Three distinct ElevenLabs SDK/API surfaces are used, all against `model_id="music_v2"`:
+Three distinct ElevenLabs SDK/API surfaces are used, all against `model_id="music_v2_5"`:
 
 | Call | Used by | Params sent | Response consumed |
 |---|---|---|---|
 | `music.composition_plan.create` | Plan stage | `prompt`, `music_length_ms`, `model_id` | `.chunks[]` (each: `text`, `positive_styles`, `negative_styles`, `duration_ms`, `context_adherence`) |
-| `music.compose_detailed` | Render stage | See `to_compose_kwargs()` in §3.3; either `{prompt, music_length_ms?}` or `{composition_plan: {chunks}}`, plus `model_id`, `force_instrumental`, `store_for_inpainting`, `with_timestamps`, `sign_with_c2pa`, optional `output_format`, optional `finetune_id`/`finetune_strength` | `.filename`, `.audio` (bytes), `.json.composition_plan`, `.json.song_metadata`, response header `song-id` |
+| `music.compose_detailed` | Render stage | See `to_compose_kwargs()` in §3.3; either `{prompt, music_length_ms?}` or `{composition_plan: {chunks}}`, plus `model_id`, `force_instrumental`, `store_for_inpainting`, `with_timestamps`, `sign_with_c2pa`, optional `output_format`, optional `finetune_id` | `.filename`, `.audio` (bytes), `.json.composition_plan`, `.json.song_metadata`, response header `song-id` |
 | `music.finetunes.list` | Finetune stage | `visibility`, `created_by`, `cursor`, `page_size` | `.finetunes[]` (mapped to `FinetuneSummary`), `.has_more`, `.next_cursor` |
 
 **No retry/backoff logic exists anywhere in the current codebase for any of these calls** — every call is a single attempt; any failure propagates as an exception immediately. The Node port is not obligated to add retries, but if it does, this is new behavior beyond parity — call it out as an intentional improvement, not a silent behavior change, if added.
@@ -657,7 +651,7 @@ The Python `testing/` directory (13 scripts) is **not a pytest suite** — each 
 
 - **`test_prompt_endpoint.py`** — posts `prompt_test_cases.json`'s `"default"` case (and, with `--all`, several named scenarios: Meditation/Wellness, Video Game Action, Podcast Background, etc.) to `POST /prompt`. Parses the returned prompt text for a duration hint and writes `generated_prompt.json` = `{prompt, music_length_ms}` for the next script to consume.
 - **`test_plan_endpoint.py`** — prefers the previous script's output; falls back to a static `plan_test_input.json` (`{prompt: "Create a 30-second bright pop-electro ad...", music_length_ms: 30000}`). Also validates that a missing `prompt` and an out-of-range `music_length_ms` (500ms, below the 3000ms floor — note: `PlanGenerationRequest`'s actual floor is 1000ms, but this test uses a value below even that) both return `422`. Writes `generated_comp_plan.json` for the next script.
-- **`test_render_endpoint.py`** — the most thorough of the four. `render_test_input.json` holds three named payloads: `"plan_mode"` (a 4-chunk composition plan, title "Indie Sunrise"), `"with_title"` (asserts the returned filename embeds the sanitized title), `"prompt_mode"` (`{title, prompt, music_length_ms: 8000, force_instrumental: true, output_format: "mp3_44100_128", ...}`). Exercises, in order: 404-on-missing-identifier, render-with-title, prompt-mode render, plan-mode render (preferring the chained output from the plan test), then downloads the result via `GET /render/download/{id}`, streams via `GET /render/stream/{id}` (validates first-chunk delivery), and finally validation cases: empty-chunks-and-no-prompt, both-prompt-and-chunks, `music_length_ms`-without-`prompt` — all expecting `422`. Also supports `--finetune-id`/`--finetune-strength` CLI flags to exercise the finetune pass-through path specifically.
+- **`test_render_endpoint.py`** — the most thorough of the four. `render_test_input.json` holds three named payloads: `"plan_mode"` (a 4-chunk composition plan, title "Indie Sunrise"), `"with_title"` (asserts the returned filename embeds the sanitized title), `"prompt_mode"` (`{title, prompt, music_length_ms: 8000, force_instrumental: true, output_format: "mp3_44100_128", ...}`). Exercises, in order: 404-on-missing-identifier, render-with-title, prompt-mode render, plan-mode render (preferring the chained output from the plan test), then downloads the result via `GET /render/download/{id}`, streams via `GET /render/stream/{id}` (validates first-chunk delivery), and finally validation cases: empty-chunks-and-no-prompt, both-prompt-and-chunks, `music_length_ms`-without-`prompt` — all expecting `422`. Also supports `--finetune-id` CLI flag to exercise the finetune pass-through path specifically.
 - **`test_render_websocket.py`** — connects to `ws://localhost:8000/render/ws`, expects the initial `connected` progress message, sends a `{"type": "render", "composition_plan": {...}}` envelope (same source data as the render test), streams `progress` messages until a terminal `result` or `error`. A second scenario sends an empty-`chunks` plan and asserts an `error` message (not a raw connection drop) is returned with an `error_code`.
 
 ### 10.2 Other scripts (lower priority to replicate, but useful references)
@@ -684,7 +678,7 @@ The Python `testing/` directory (13 scripts) is **not a pytest suite** — each 
 |---|---|---|
 | MCP server framework | `@modelcontextprotocol/sdk` | Official TS SDK; zod-native tool schemas; `StreamableHTTPServerTransport` for the Teams/Agent 365 deployment target; built-in `progressToken`/`notifications/progress` support needed for `render_music`. |
 | ElevenLabs — plan & finetune calls | `@elevenlabs/elevenlabs-js` | Plain JSON-in/JSON-out calls with no known SDK bugs; official SDK buys type safety. |
-| ElevenLabs — `compose_detailed` specifically | Raw HTTP (`fetch` + `response.formData()` for the multipart response, `response.headers.get('song-id')`) by default | The Python SDK wrapper silently drops `finetune_id`/`finetune_strength` — a Fern-codegen artifact the JS SDK (generated from the same pipeline) may share. Verify with a live smoke test before trusting the JS wrapper; ship the raw-HTTP path as the safe default regardless. |
+| ElevenLabs — `compose_detailed` specifically | Raw HTTP (`fetch` + `response.formData()` for the multipart response, `response.headers.get('song-id')`) by default | The Python SDK wrapper silently drops `finetune_id` — a Fern-codegen artifact the JS SDK (generated from the same pipeline) may share. Verify with a live smoke test before trusting the JS wrapper; ship the raw-HTTP path as the safe default regardless. |
 | OpenAI Agents equivalent | `@openai/agents` | Official TypeScript port of the Python Agents SDK — same `Agent`/`run()` primitives, built-in web-search tool, zod `outputType` for structured output ≈ `output_type=AgentPromptOutput`. Near 1:1 port target from the same vendor. |
 | ORM / DB | Drizzle (`drizzle-orm` + `drizzle-kit`) | One flat metadata table, needs both SQLite (dev) and Postgres (prod) from a single schema — Drizzle's sweet spot, includes migration tooling. Prisma is heavier than needed for one table; Kysely has no built-in migrations. |
 | Azure Blob Storage | `@azure/storage-blob` + `@azure/identity` | Direct equivalent of the Python `azure-storage-blob`/`azure-identity` packages already in use; same connection-string-then-managed-identity auth precedence. |
@@ -756,6 +750,6 @@ The full system prompt (`prompts/generate_music_prompt.md`, 359 lines) must be c
 ## Appendix B: Open questions to verify against live APIs before implementation
 
 - **`sign_with_c2pa` wire parameter name** — confirm the actual ElevenLabs HTTP API field name directly against current API documentation/a live call. The Python code's `sign_with_c_2_pa` is a Python-SDK-internal Fern-codegen artifact; do not assume the JS side has (or needs) an equivalent translation.
-- **Does `@elevenlabs/elevenlabs-js`'s `compose_detailed` wrapper forward `finetune_id`/`finetune_strength` correctly?** Unconfirmed — the Python wrapper does not. Test directly; build the raw-HTTP fallback regardless (§4.3, §11.1).
+- **Does `@elevenlabs/elevenlabs-js`'s `compose_detailed` wrapper forward `finetune_id` correctly?** Unconfirmed — the Python wrapper does not. Test directly; build the raw-HTTP fallback regardless (§4.3, §11.1).
 - **Exact multipart response shape of `compose_detailed`** — the Python code only documents the fields it actually consumes (`filename`, `audio`, `json.composition_plan`, `json.song_metadata`, `song-id` header); confirm the complete field set against current ElevenLabs API docs so nothing needed later (e.g. word-level timestamps when `with_timestamps: true`) is missed.
 - **`PlanGenerationRequest.music_length_ms` floor discrepancy** — the Pydantic model enforces `ge=1000`, but `test_plan_endpoint.py`'s validation test uses `500` expecting a `422` (which would pass either way, but confirm `1000` is the intended floor, not `3000`, before hardcoding it into the Node zod schema — `RenderRequest.music_length_ms` separately uses a `3000` floor, and it would be easy to conflate the two).

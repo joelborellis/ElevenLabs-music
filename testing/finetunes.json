@@ -1,6 +1,196 @@
 {
     "finetunes": [
         {
+            "id": "fc7ohoxr46pbtqmwpbub",
+            "name": "Gothic Power Rock (Female)",
+            "tags": [
+                "Rock",
+                "Pop Rock",
+                "Eurobeat",
+                "Alternative Rock",
+                "Female Vocal"
+            ],
+            "primary_genre": "Rock",
+            "model_id": "music_v2",
+            "created_at": "2026-08-14T22:26:12.782000Z",
+            "visibility": "public",
+            "created_by": "elevenlabs",
+            "status": "completed",
+            "training_progress": 1.0,
+            "failure_reason": null
+        },
+        {
+            "id": "vwseitetkxqcdgsmkp8q",
+            "name": "EDM Dance Pop (Female)",
+            "tags": [
+                "Electronic",
+                "Synth-pop",
+                "Dance-Pop",
+                "Electropop",
+                "Female Vocal"
+            ],
+            "primary_genre": "EDM",
+            "model_id": "music_v2",
+            "created_at": "2026-08-14T22:26:04.620000Z",
+            "visibility": "public",
+            "created_by": "elevenlabs",
+            "status": "completed",
+            "training_progress": 1.0,
+            "failure_reason": null
+        },
+        {
+            "id": "deg4quj3g28cbyuetrwl",
+            "name": "Power Pop (Male)",
+            "tags": [
+                "Rock",
+                "Pop",
+                "Pop Rock",
+                "Indie Rock",
+                "Alternative Rock"
+            ],
+            "primary_genre": "Pop",
+            "model_id": "music_v2",
+            "created_at": "2026-08-14T22:25:56.157000Z",
+            "visibility": "public",
+            "created_by": "elevenlabs",
+            "status": "completed",
+            "training_progress": 1.0,
+            "failure_reason": null
+        },
+        {
+            "id": "ibgjl6wsy1m9zi7osp27",
+            "name": "Hard Rock (Male)",
+            "tags": [
+                "Rock",
+                "Metal",
+                "Hard Rock",
+                "Alternative Rock",
+                "Post-Grunge"
+            ],
+            "primary_genre": "Heavy Rock",
+            "model_id": "music_v2",
+            "created_at": "2026-08-14T22:25:47.676000Z",
+            "visibility": "public",
+            "created_by": "elevenlabs",
+            "status": "completed",
+            "training_progress": 1.0,
+            "failure_reason": null
+        },
+        {
+            "id": "ojz144r6sblq1foezx1g",
+            "name": "Melancholic Indie (Male)",
+            "tags": [
+                "Folk",
+                "Indie Rock",
+                "Pop Rock",
+                "Male Vocal",
+                "Melancholic"
+            ],
+            "primary_genre": "Indie Rock",
+            "model_id": "music_v2",
+            "created_at": "2026-08-14T22:25:36.322000Z",
+            "visibility": "public",
+            "created_by": "elevenlabs",
+            "status": "completed",
+            "training_progress": 1.0,
+            "failure_reason": null
+        },
+        {
+            "id": "cmogtn8kgmqiog8dhexe",
+            "name": "Deep Hip-Hop Voice (Male)",
+            "tags": [
+                "Hip Hop",
+                "Hip-Hop/Rap",
+                "Trap",
+                "Hardcore Hip Hop",
+                "Male Vocal"
+            ],
+            "primary_genre": "Chill Hop",
+            "model_id": "music_v2",
+            "created_at": "2026-08-14T22:25:29.573000Z",
+            "visibility": "public",
+            "created_by": "elevenlabs",
+            "status": "completed",
+            "training_progress": 1.0,
+            "failure_reason": null
+        },
+        {
+            "id": "hzluexd1oy54d4g2rili",
+            "name": "Y2K RnB Pop (Female) ",
+            "tags": [
+                "Pop",
+                "Electronic",
+                "Synth-pop",
+                "Dance-Pop",
+                "Female Vocal"
+            ],
+            "primary_genre": "Pop",
+            "model_id": "music_v2",
+            "created_at": "2026-08-14T22:25:23.696000Z",
+            "visibility": "public",
+            "created_by": "elevenlabs",
+            "status": "completed",
+            "training_progress": 1.0,
+            "failure_reason": null
+        },
+        {
+            "id": "rhesfql7yrkaaboxnxgp",
+            "name": "Angsty Alt Rock (Male) ",
+            "tags": [
+                "Rock",
+                "Alternative Rock",
+                "Pop Rock",
+                "Indie Rock",
+                "Male Vocal"
+            ],
+            "primary_genre": "Indie Rock",
+            "model_id": "music_v2",
+            "created_at": "2026-08-14T22:25:16.666000Z",
+            "visibility": "public",
+            "created_by": "elevenlabs",
+            "status": "completed",
+            "training_progress": 1.0,
+            "failure_reason": null
+        },
+        {
+            "id": "jhkwafhohc9agcda0cfr",
+            "name": "Whispery Angelic (Female) ",
+            "tags": [
+                "Electronic",
+                "Trip Hop",
+                "Pop",
+                "Indie Folk",
+                "Female Vocal"
+            ],
+            "primary_genre": "Ambient",
+            "model_id": "music_v2",
+            "created_at": "2026-08-14T19:01:51.105000Z",
+            "visibility": "public",
+            "created_by": "elevenlabs",
+            "status": "completed",
+            "training_progress": 1.0,
+            "failure_reason": null
+        },
+        {
+            "id": "iurf2sy9ee0sdcpenlxj",
+            "name": "Emo Trap Autotune (Male)",
+            "tags": [
+                "Hip Hop",
+                "R&B",
+                "Rap Electronic",
+                "Male Vocal",
+                "Emo Trap"
+            ],
+            "primary_genre": "Emo Rap",
+            "model_id": "music_v2",
+            "created_at": "2026-08-14T15:54:41.983000Z",
+            "visibility": "public",
+            "created_by": "elevenlabs",
+            "status": "completed",
+            "training_progress": 1.0,
+            "failure_reason": null
+        },
+        {
             "id": "lh6n3z81aznqz0ohl9pn",
             "name": "Rock Fran\u00e7ais",
             "tags": [
@@ -34,25 +224,6 @@
             "primary_genre": "Indie",
             "model_id": "music_v2",
             "created_at": "2026-07-21T19:06:27.707000Z",
-            "visibility": "public",
-            "created_by": "elevenlabs",
-            "status": "completed",
-            "training_progress": 1.0,
-            "failure_reason": null
-        },
-        {
-            "id": "myhwwkx9utoqjzw27f6c",
-            "name": "Afro House Beats",
-            "tags": [
-                "Afrobeats",
-                "Afropop",
-                "Pop",
-                "Reggaeton",
-                "Latin Urban"
-            ],
-            "primary_genre": "World",
-            "model_id": "music_v2",
-            "created_at": "2026-07-21T13:27:41.092000Z",
             "visibility": "public",
             "created_by": "elevenlabs",
             "status": "completed",
@@ -574,26 +745,6 @@
             "primary_genre": "Jazz",
             "model_id": "music_v2",
             "created_at": "2026-07-19T00:37:43.471000Z",
-            "visibility": "public",
-            "created_by": "elevenlabs",
-            "status": "completed",
-            "training_progress": 1.0,
-            "failure_reason": null
-        },
-        {
-            "id": "i7kba5otukdneth5zwcs",
-            "name": "Emo Trap",
-            "tags": [
-                "Hip Hop",
-                "Hip-Hop/Rap",
-                "Funk",
-                "Hip-Hop",
-                "Electronic",
-                "Trap"
-            ],
-            "primary_genre": "Trap",
-            "model_id": "music_v2",
-            "created_at": "2026-07-19T00:37:40.804000Z",
             "visibility": "public",
             "created_by": "elevenlabs",
             "status": "completed",

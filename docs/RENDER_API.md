@@ -40,7 +40,7 @@ The implementation follows FastAPI best practices with a clean separation of con
 
 ### POST /render
 
-Renders music from a composition plan using the ElevenLabs `compose_detailed` API with the `music_v2` model.
+Renders music from a composition plan using the ElevenLabs `compose_detailed` API with the `music_v2_5` model.
 
 #### Request Body
 
@@ -80,7 +80,7 @@ optional lyrics/section marker (`text`), and context adherence:
   "title": "Quick Hook",
   "prompt": "An upbeat 30-second bright pop-electro ad hook at 120 BPM in E major.",
   "music_length_ms": 30000,
-  "model_id": "music_v2",
+  "model_id": "music_v2_5",
   "force_instrumental": true,
   "output_format": "mp3_44100_128"
 }
@@ -93,7 +93,7 @@ optional lyrics/section marker (`text`), and context adherence:
 | `prompt` | string \| null | one of prompt/chunks | `null` | Text-to-music prompt. **Mutually exclusive with `chunks`.** |
 | `chunks` | array[Chunk] | one of prompt/chunks | `[]` | Composition plan sections. **Mutually exclusive with `prompt`.** |
 | `music_length_ms` | integer \| null | No | `null` | **Only valid with `prompt`.** Range 3000–600000 (3–600 s). |
-| `model_id` | string | No | `"music_v2"` | `"music_v1"` or `"music_v2"`. |
+| `model_id` | string | No | `"music_v2_5"` | `"music_v1"`, `"music_v2"`, or `"music_v2_5"`. |
 | `force_instrumental` | boolean | No | `false` | Guarantee an instrumental result. |
 | `store_for_inpainting` | boolean | No | `false` | Store the song to allow later inpainting. |
 | `with_timestamps` | boolean | No | `false` | Return word-level timestamps. |

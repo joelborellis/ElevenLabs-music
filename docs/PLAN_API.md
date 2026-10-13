@@ -23,7 +23,7 @@ The implementation follows FastAPI best practices with a clean separation of con
 ## Endpoint: POST /plan
 
 Generates a structured composition plan based on a text prompt. The composition plan uses
-the ElevenLabs `music_v2` model and can be used directly with the `compose_detailed` API or
+the ElevenLabs `music_v2_5` model and can be used directly with the `compose_detailed` API or
 the `/render` endpoint.
 
 ### Request Body
@@ -44,7 +44,7 @@ the `/render` endpoint.
 
 ### Response
 
-The `music_v2` composition plan is a flat list of `chunks`. Each chunk carries its own
+The `music_v2_5` composition plan is a flat list of `chunks`. Each chunk carries its own
 positive/negative styles, duration, optional lyrics/section marker (`text`), and context
 adherence.
 

@@ -353,7 +353,7 @@ Expected latency is approximately 10-60 seconds. Set an HTTP timeout that permit
 
 ### `POST /plan`
 
-Converts the generated music prompt into a `music_v2` composition plan.
+Converts the generated music prompt into a `music_v2_5` composition plan.
 
 Request:
 
@@ -394,7 +394,7 @@ Each chunk contains:
 - `negative_styles`: styles to avoid.
 - `duration_ms`: chunk duration.
 - `context_adherence`: nullable adherence value.
-- Possible additional `music_v2` fields.
+- Possible additional `music_v2_5` fields.
 
 Preserve unknown chunk fields when storing and forwarding the plan. Do not deserialize into a type that discards future fields before sending them to `/render`.
 
@@ -418,7 +418,7 @@ Recommended plan-mode request for this agent:
       "context_adherence": "high"
     }
   ],
-  "model_id": "music_v2",
+  "model_id": "music_v2_5",
   "finetune_id": "aslj0pdvdods2agammwb",
   "force_instrumental": false,
   "with_timestamps": false,
@@ -433,9 +433,8 @@ Request fields:
 | `prompt` | string or null | null | Prompt mode only; mutually exclusive with non-empty `chunks`. |
 | `chunks` | array | `[]` | Plan mode only; mutually exclusive with a non-empty `prompt`. |
 | `music_length_ms` | integer or null | null | Prompt mode only; 3,000-600,000 ms. |
-| `model_id` | string | `music_v2` | Keep `music_v2`. |
+| `model_id` | string | `music_v2_5` | Keep `music_v2_5`. |
 | `finetune_id` | string or null | null | Send the same selected ID used for `/prompt`. |
-| `finetune_strength` | number or null | API default | 0.0-1.0 and only valid with `finetune_id`. Omit unless the product explicitly exposes this advanced control. |
 | `force_instrumental` | boolean | `false` | Keep consistent with the choice sent to `/prompt`. |
 | `store_for_inpainting` | boolean | `false` | Enable only for a defined inpainting workflow. |
 | `with_timestamps` | boolean | `false` | Requests word-level timestamps. |
@@ -448,8 +447,6 @@ Validation failures include:
 - Neither `prompt` nor `chunks` is present.
 - Both `prompt` and non-empty `chunks` are present.
 - `music_length_ms` is supplied in plan mode.
-- `finetune_strength` is supplied without `finetune_id`.
-- `finetune_strength` is outside 0.0-1.0.
 - Prompt-mode duration is outside 3,000-600,000 ms.
 
 Response:

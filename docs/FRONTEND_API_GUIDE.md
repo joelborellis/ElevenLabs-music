@@ -5,7 +5,7 @@ This document describes every backend endpoint the frontend can use — inputs, 
 > Source of truth: this reflects the FastAPI backend in this repo. A live, always-current schema is also available at **`/openapi.json`** and interactive docs at **`/docs`** when the server is running — you can generate a typed client from the former.
 
 > **Companion docs:**
-> - [`FRONTEND_FINETUNES.md`](./FRONTEND_FINETUNES.md) — the `GET /finetunes` endpoint and the `finetune_id` / `finetune_strength` fields on `/render`. **Read this first:** `finetune_id` is now also **required** on `/prompt`, where it replaces the retired `sound_profile` preset list.
+> - [`FRONTEND_FINETUNES.md`](./FRONTEND_FINETUNES.md) — the `GET /finetunes` endpoint and the `finetune_id` field on `/render`. **Read this first:** `finetune_id` is now also **required** on `/prompt`, where it replaces the retired `sound_profile` preset list.
 > - [`FRONTEND_API_CHANGES_STORAGE.md`](./FRONTEND_API_CHANGES_STORAGE.md) — render `id`s and Blob/DB storage (supersedes the `/render` response shape below).
 
 ---
@@ -151,7 +151,7 @@ Expands a prompt into a structured, editable plan (a list of "chunks"/sections).
       "negative_styles": ["vocals"],
       "duration_ms": 6000,
       "context_adherence": "high"              // may be null
-      // NOTE: extra music_v2 fields may also appear (e.g. conditioning_ref, condition_strength)
+      // NOTE: extra music_v2_5 fields may also appear (e.g. conditioning_ref, condition_strength)
     }
     // ...more chunks
   ]
@@ -176,7 +176,7 @@ Renders audio from **either** a composition plan **or** a prompt. Returns metada
 | `prompt` | string \| null | one of prompt/chunks | `null` | Text-to-music. **Mutually exclusive with `chunks`.** |
 | `chunks` | Chunk[] | one of prompt/chunks | `[]` | A composition plan (from `/plan`). **Mutually exclusive with `prompt`.** |
 | `music_length_ms` | integer \| null | ❌ | `null` | **Only valid with `prompt`.** Range **3000–600000** (3–600 s). |
-| `model_id` | string | ❌ | `"music_v2"` | `"music_v1"` or `"music_v2"`. |
+| `model_id` | string | ❌ | `"music_v2_5"` | `"music_v1"`, `"music_v2"`, or `"music_v2_5"`. |
 | `force_instrumental` | boolean | ❌ | `false` | Guarantee an instrumental result. |
 | `store_for_inpainting` | boolean | ❌ | `false` | Store the song to allow later inpainting. |
 | `with_timestamps` | boolean | ❌ | `false` | Return word-level timestamps. |
@@ -385,7 +385,7 @@ export interface Chunk {
   negative_styles: string[];
   duration_ms: number;              // must be >= 3000 to render
   context_adherence?: string | null;
-  [extra: string]: unknown;         // music_v2 may add fields
+  [extra: string]: unknown;         // music_v2_5 may add fields
 }
 export interface PlanRequest {
   prompt: string;
@@ -401,7 +401,7 @@ export interface RenderRequest {
   prompt?: string | null;
   chunks?: Chunk[];
   music_length_ms?: number | null;  // 3000..600000, only with prompt
-  model_id?: "music_v1" | "music_v2";
+  model_id?: "music_v1" | "music_v2" | "music_v2_5";
   force_instrumental?: boolean;
   store_for_inpainting?: boolean;
   with_timestamps?: boolean;

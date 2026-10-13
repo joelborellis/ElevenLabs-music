@@ -1,6 +1,6 @@
 # ElevenLabs Music Prompt Generator API
 
-A production-ready FastAPI application that generates high-quality music prompts for the ElevenLabs music_v2 model using OpenAI Agents.
+A production-ready FastAPI application that generates high-quality music prompts for the ElevenLabs music_v2_5 model using OpenAI Agents.
 
 ## Features
 
@@ -101,7 +101,7 @@ With `ENVIRONMENT=development`, SQLite tables are created automatically on start
 | Method | Path | Purpose |
 |--------|------|---------|
 | `POST` | `/prompt` | Generate a music prompt from the presets + chosen finetune |
-| `POST` | `/plan` | Generate a `music_v2` composition plan from a prompt |
+| `POST` | `/plan` | Generate a `music_v2_5` composition plan from a prompt |
 | `POST` | `/render` | Render audio from a prompt or a composition plan |
 | `WS` | `/render/ws` | Render with real-time progress updates |
 | `GET` | `/render/download/{identifier}` | Download rendered audio |
@@ -190,7 +190,7 @@ curl -X POST http://localhost:8000/plan \
 When `music_length_ms` is omitted, the service tries to extract a duration from the
 prompt text and falls back to 30000 ms if it finds none.
 
-**Response** (`music_v2` plan — a flat list of chunks):
+**Response** (`music_v2_5` plan — a flat list of chunks):
 ```json
 {
   "chunks": [
@@ -225,7 +225,7 @@ curl -X POST http://localhost:8000/render \
         "context_adherence": "high"
       }
     ],
-    "model_id": "music_v2"
+    "model_id": "music_v2_5"
   }'
 ```
 
@@ -246,11 +246,10 @@ curl -X POST http://localhost:8000/render \
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `prompt` | string | `null` | Text-to-music prompt. Mutually exclusive with `chunks` |
-| `chunks` | array[Chunk] | `[]` | `music_v2` composition plan. Mutually exclusive with `prompt` |
+| `chunks` | array[Chunk] | `[]` | `music_v2_5` composition plan. Mutually exclusive with `prompt` |
 | `music_length_ms` | integer | `null` | Song length (3000-600000). Prompt mode only |
-| `model_id` | string | `"music_v2"` | `"music_v1"` or `"music_v2"` |
+| `model_id` | string | `"music_v2_5"` | `"music_v1"`, `"music_v2"`, or `"music_v2_5"` |
 | `finetune_id` | string | `null` | ElevenLabs finetune to steer generation (see `GET /finetunes`) |
-| `finetune_strength` | float | `null` | Finetune influence (0.0-1.0). Requires `finetune_id` |
 | `force_instrumental` | boolean | `false` | Guarantee an instrumental result |
 | `store_for_inpainting` | boolean | `false` | Store the song to allow later inpainting |
 | `with_timestamps` | boolean | `false` | Return word-level timestamps |
@@ -267,7 +266,7 @@ curl -X POST http://localhost:8000/render \
 | `duration_ms` | integer | Yes | Duration in milliseconds |
 | `context_adherence` | string | No | How strictly to follow surrounding context (e.g. `"high"`) |
 
-Chunks accept extra fields, so newer `music_v2` keys (`conditioning_ref`,
+Chunks accept extra fields, so newer `music_v2_5` keys (`conditioning_ref`,
 `condition_strength`, …) pass through untouched.
 
 **Response:**

@@ -128,7 +128,7 @@ A response like:
 }
 ```
 
-The `prompt` field contains the generated music prompt ready to use with ElevenLabs `music_v2` model!
+The `prompt` field contains the generated music prompt ready to use with ElevenLabs `music_v2_5` model!
 
 ## Available Endpoints
 

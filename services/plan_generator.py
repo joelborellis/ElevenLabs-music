@@ -136,13 +136,13 @@ class PlanGeneratorService:
             composition_plan = self._client.music.composition_plan.create(
                 prompt=request.prompt,
                 music_length_ms=music_length_ms,
-                model_id="music_v2",
+                model_id="music_v2_5",
             )
             
             # Convert the ElevenLabs response to our model
             plan_data = composition_plan.model_dump()
             
-            # Build chunks from the response (music_v2 format)
+            # Build chunks from the response (music_v2_5 format)
             chunks = []
             for chunk_data in plan_data.get("chunks") or []:
                 chunk = Chunk(

@@ -21,7 +21,7 @@ from elevenlabs.client import ElevenLabs
 # Load ELEVENLABS_API_KEY from the project .env
 load_dotenv(Path(__file__).parent.parent / ".env")
 
-MODEL_ID = "music_v2"
+MODEL_ID = "music_v2_5"
 FINETUNE_NAME = "Indie Dance"
 MUSIC_LENGTH_MS = 20000  # 20s (min 3000, max 600000)
 PROMPT = (

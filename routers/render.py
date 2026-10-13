@@ -48,17 +48,16 @@ tracer = trace.get_tracer(__name__)
     Provide EITHER a text prompt OR a composition plan (mutually exclusive):
     - **prompt**: A simple text description to generate a song from. May be
       combined with **music_length_ms** (3000-600000).
-    - **chunks**: A music_v2 composition plan — an array of chunks (sections),
+    - **chunks**: A music_v2_5 composition plan — an array of chunks (sections),
       each with positive_styles, negative_styles, duration_ms, text
       (lyrics/marker), and context_adherence.
 
     Additional pass-through parameters (all optional, with defaults):
-    - **model_id** (default "music_v2"), **force_instrumental**,
+    - **model_id** (default "music_v2_5"), **force_instrumental**,
       **store_for_inpainting**, **with_timestamps**, **sign_with_c2pa**,
       **output_format**
     - **finetune_id**: ID of an ElevenLabs finetune to steer generation
-      (works in both prompt and plan modes). **finetune_strength** (0.0-1.0)
-      optionally softens its influence.
+      (works in both prompt and plan modes).
     - **title**: local-only, used to name the saved output file (not sent to
       ElevenLabs).
 

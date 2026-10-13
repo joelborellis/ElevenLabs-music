@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class Chunk(BaseModel):
-    """A chunk (section) of a music_v2 composition plan."""
+    """A chunk (section) of a music_v2_5 composition plan."""
 
     # Preserve any additional v2 fields (e.g. conditioning_ref, condition_strength)
     model_config = ConfigDict(extra="allow")
@@ -35,7 +35,7 @@ class Chunk(BaseModel):
 
 
 class CompositionPlanResponse(BaseModel):
-    """Response model for a music_v2 composition plan."""
+    """Response model for a music_v2_5 composition plan."""
 
     chunks: list[Chunk] = Field(
         default_factory=list,

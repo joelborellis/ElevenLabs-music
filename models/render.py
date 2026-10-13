@@ -11,7 +11,7 @@ from models.plan import Chunk
 class RenderRequest(BaseModel):
     """Request model for rendering music via ElevenLabs ``compose_detailed``.
 
-    Provide EITHER ``prompt`` (text-to-music) OR ``chunks`` (a ``music_v2``
+    Provide EITHER ``prompt`` (text-to-music) OR ``chunks`` (a ``music_v2_5``
     composition plan) — the two are mutually exclusive, matching the ElevenLabs
     API contract. Every other field maps directly to a ``compose_detailed`` body
     parameter (with project-specific defaults) so all supported options can be
@@ -20,8 +20,8 @@ class RenderRequest(BaseModel):
     wrapper does not forward them).
 
     Note: the SDK's ``MusicClient.compose_detailed`` wrapper silently drops
-    ``finetune_id``/``finetune_strength``; ``RenderService`` routes around it via
-    the raw client when either is set (see ``services/render_service.py``).
+    ``finetune_id``; ``RenderService`` routes around it via the raw client when it
+    is set (see ``services/render_service.py``).
     """
 
     # --- Generation source (mutually exclusive) ---
@@ -31,7 +31,7 @@ class RenderRequest(BaseModel):
     )
     chunks: list[Chunk] = Field(
         default_factory=list,
-        description="Composition plan sections (music_v2). Mutually exclusive with 'prompt'."
+        description="Composition plan sections (music_v2_5). Mutually exclusive with 'prompt'."
     )
 
     # --- Prompt-mode only ---
@@ -44,20 +44,13 @@ class RenderRequest(BaseModel):
 
     # --- compose_detailed body parameters (project defaults) ---
     model_id: str = Field(
-        default="music_v2",
-        description="ElevenLabs generation model: 'music_v1' or 'music_v2'."
+        default="music_v2_5",
+        description="ElevenLabs generation model: 'music_v1', 'music_v2', or 'music_v2_5'."
     )
     finetune_id: Optional[str] = Field(
         default=None,
         description="ID of an ElevenLabs finetune to steer the generation. "
                     "Works with both prompt and composition-plan modes."
-    )
-    finetune_strength: Optional[float] = Field(
-        default=None,
-        ge=0.0,
-        le=1.0,
-        description="How strongly the finetune influences generation (0.0-1.0, "
-                    "default 1.0 on the API). Only meaningful when 'finetune_id' is set."
     )
     force_instrumental: bool = Field(
         default=False,
@@ -100,8 +93,6 @@ class RenderRequest(BaseModel):
             raise ValueError("Provide either 'prompt' or 'chunks'.")
         if self.music_length_ms is not None and not has_prompt:
             raise ValueError("'music_length_ms' can only be used together with 'prompt'.")
-        if self.finetune_strength is not None and not self.finetune_id:
-            raise ValueError("'finetune_strength' can only be used together with 'finetune_id'.")
 
         return self
 
@@ -123,12 +114,9 @@ class RenderRequest(BaseModel):
         if self.output_format is not None:
             kwargs["output_format"] = self.output_format
 
-        # Finetune steering (optional). finetune_strength is only meaningful
-        # alongside finetune_id (enforced by the validator).
+        # Finetune steering (optional).
         if self.finetune_id is not None:
             kwargs["finetune_id"] = self.finetune_id
-            if self.finetune_strength is not None:
-                kwargs["finetune_strength"] = self.finetune_strength
 
         if self.prompt and self.prompt.strip():
             kwargs["prompt"] = self.prompt
@@ -162,7 +150,7 @@ class RenderRequest(BaseModel):
                             "context_adherence": "high"
                         }
                     ],
-                    "model_id": "music_v2",
+                    "model_id": "music_v2_5",
                     "force_instrumental": False,
                     "with_timestamps": False
                 },
@@ -170,7 +158,7 @@ class RenderRequest(BaseModel):
                     "title": "Quick Prompt Track",
                     "prompt": "An upbeat 30-second bright pop-electro ad hook at 120 BPM in E major.",
                     "music_length_ms": 30000,
-                    "model_id": "music_v2",
+                    "model_id": "music_v2_5",
                     "force_instrumental": True,
                     "output_format": "mp3_44100_128"
                 }

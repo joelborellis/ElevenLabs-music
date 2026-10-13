@@ -1,6 +1,6 @@
 # Music Prompt Generation API
 
-This directory contains the implementation of the `/prompt` endpoint for generating high-quality music prompts for the ElevenLabs `music_v2` model.
+This directory contains the implementation of the `/prompt` endpoint for generating high-quality music prompts for the ElevenLabs `music_v2_5` model.
 
 ## Architecture
 
@@ -99,7 +99,7 @@ Generates a music prompt from two preset selections plus the ElevenLabs finetune
 
 #### Response Fields
 
-- **prompt**: The generated music prompt (plain text) ready for ElevenLabs `music_v2` model
+- **prompt**: The generated music prompt (plain text) ready for ElevenLabs `music_v2_5` model
 - **title**: AI-generated short, catchy title for the track (3-6 words)
 - **description**: AI-generated clear, concise description of the track (1-2 sentences)
 - **request_id**: Unique identifier for tracking and debugging

@@ -15,7 +15,7 @@
 The backend now supports **ElevenLabs music finetunes** (genre/style-specialized models that steer generation).
 
 1. **New endpoint `GET /finetunes`** returns the list of usable finetunes (id + name + genre/tags) so you can build a picker. No ElevenLabs API key is needed client-side — the backend proxies it.
-2. **`POST /render` (and the `/render/ws` WebSocket) now accept two optional fields:** `finetune_id` and `finetune_strength`. When present, the render is steered by that finetune.
+2. **`POST /render` (and the `/render/ws` WebSocket) now accept an optional `finetune_id` field.** When present, the render is steered by that finetune.
 
 **At render time, finetunes remain optional:**
 - If you omit `finetune_id` on `/render`, rendering behaves exactly as before.
@@ -27,8 +27,8 @@ The backend now supports **ElevenLabs music finetunes** (genre/style-specialized
 
 **What you should build:**
 1. Fetch `GET /finetunes` and render a finetune picker (dropdown / searchable list). Include a "None" option.
-2. Persist the chosen `finetune_id` (and optional `finetune_strength`) in your render state.
-3. Send `finetune_id` (+ optional `finetune_strength`) in the `POST /render` body.
+2. Persist the chosen `finetune_id` in your render state.
+3. Send `finetune_id` in the `POST /render` body.
 
 ---
 
@@ -62,7 +62,7 @@ GET /finetunes
 
 | Param | Type | Default | Description |
 | --- | --- | --- | --- |
-| `model_id` | string | — | Filter to a model, e.g. `music_v2`. **Recommended: pass `music_v2`** since renders use `music_v2` by default. |
+| `model_id` | string | — | Filter to a model, e.g. `music_v2`. **Recommended: pass `music_v2`** — all current finetunes are `music_v2` finetunes (renders now default to `music_v2_5`). |
 | `include_incomplete` | bool | `false` | If `false` (default), only finetunes that finished training (`status: "completed"`) are returned — i.e. only usable ones. Leave this off for a picker. |
 | `visibility` | string | — | `private` \| `workspace` \| `public`. |
 | `created_by` | string | — | `self` \| `workspace` \| `elevenlabs`. |
@@ -153,16 +153,15 @@ async function listFinetunes(baseUrl: string): Promise<FinetuneSummary[]> {
 
 ---
 
-## 3. Updated `/render` request (adds `finetune_id` / `finetune_strength`)
+## 3. Updated `/render` request (adds `finetune_id`)
 
-Two new **optional** fields on the existing `/render` request body. Everything else is unchanged.
+One new **optional** field on the existing `/render` request body. Everything else is unchanged.
 
 | Field | Type | Default | Rules |
 | --- | --- | --- | --- |
 | `finetune_id` | string \| null | `null` | The `id` from `GET /finetunes`. Works in **both** prompt mode (`prompt`) and plan mode (`chunks`). |
-| `finetune_strength` | number \| null | `null` | How strongly the finetune influences generation. Range **0.0–1.0** (API default is 1.0 / full strength; lower = softer). **Only valid when `finetune_id` is also set** — sending it alone is a `422` validation error. |
 
-> Note on naming: the API field is `finetune_strength`. (ElevenLabs docs sometimes call this "finetune influence"; the backend exposes it as `finetune_strength`, clamped 0.0–1.0.)
+> There is no strength control. ElevenLabs removed `finetune_strength` from the API, so the backend no longer accepts it; if sent, it is ignored. Note that an explicit genre in the prompt or plan can override the finetune, so keep the prompt's genre consistent with the chosen finetune.
 
 ### Example — prompt mode with a finetune
 
@@ -171,8 +170,7 @@ POST /render
 {
   "prompt": "An upbeat indie dance track with a driving four-on-the-floor beat",
   "music_length_ms": 20000,
-  "finetune_id": "aslj0pdvdods2agammwb",
-  "finetune_strength": 0.8            // optional
+  "finetune_id": "aslj0pdvdods2agammwb"
 }
 ```
 
@@ -201,11 +199,6 @@ POST /render
 
 **The `/render` response shape is unchanged.** `finetune_id` is a pure input-side steering parameter — it is **not** echoed back in the response and is **not** stored inside the returned `composition_plan` or `song_metadata`. If you want to remember which finetune produced a track, **store it client-side** alongside the render `id`.
 
-### Validation errors (`422`)
-
-- `finetune_strength` provided without `finetune_id` → `422` with detail `"'finetune_strength' can only be used together with 'finetune_id'."`
-- `finetune_strength` outside `0.0`–`1.0` → `422` (Pydantic range error).
-
 ### Runtime errors (bad finetune id)
 
 The backend does **not** pre-validate that a `finetune_id` exists — ElevenLabs does. If you submit a bad/nonexistent id, the render currently fails and surfaces as **`500`** from `/render` (message: `"Music rendering failed: ..."`).
@@ -218,7 +211,7 @@ The backend does **not** pre-validate that a `finetune_id` exists — ElevenLabs
 
 ## 4. WebSocket render (`/render/ws`)
 
-Finetunes work identically over the streaming WebSocket path. The `finetune_id` / `finetune_strength` fields go inside the same render request object you already send (the payload nested under `composition_plan` in `RenderWebSocketRequest`). No protocol change beyond adding those two optional fields. See [`frontend-websocket-integration.md`](./frontend-websocket-integration.md) for the base protocol.
+Finetunes work identically over the streaming WebSocket path. The `finetune_id` field goes inside the same render request object you already send (the payload nested under `composition_plan` in `RenderWebSocketRequest`). No protocol change beyond adding that optional field. See [`frontend-websocket-integration.md`](./frontend-websocket-integration.md) for the base protocol.
 
 ---
 
@@ -226,7 +219,7 @@ Finetunes work identically over the streaming WebSocket path. The `finetune_id` 
 
 1. **Load finetunes** with `GET /finetunes?model_id=music_v2` when the render screen mounts.
 2. **Render a picker** with a **"None (default model)"** option first, then group/list finetunes by `primary_genre`, labeled with `name` and optionally `tags` as badges.
-3. **On render**, if a finetune is selected, include `finetune_id` in the `/render` body. Only include `finetune_strength` if you expose a strength slider (0.0–1.0); otherwise omit it and the API uses full strength.
+3. **On render**, if a finetune is selected, include `finetune_id` in the `/render` body.
 4. **Handle the picker gracefully** if `/finetunes` returns `502` — fall back to rendering without a finetune.
 5. **Remember the choice** per track (store `finetune_id` in your render/history state) since the backend doesn't persist or echo it.
 
@@ -238,7 +231,6 @@ Finetunes work identically over the streaming WebSocket path. The `finetune_id` 
 | --- | --- |
 | List finetunes | `GET /finetunes?model_id=music_v2` |
 | Field to submit | `finetune_id` (from a finetune's `id`) |
-| Optional strength | `finetune_strength` (0.0–1.0, requires `finetune_id`) |
 | Applies at | `POST /prompt` (**required**), `POST /render`, `WS /render/ws` (optional) |
 | Not applicable to | `POST /plan` |
 | Echoed in render response? | No — store client-side |

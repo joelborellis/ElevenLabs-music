@@ -39,7 +39,7 @@ with open(COMP_PLAN_FILE, "r", encoding="utf-8") as f:
 
 track_details = elevenlabs.music.compose_detailed(
     composition_plan=json.loads(COMP_PLAN),
-    model_id="music_v2",
+    model_id="music_v2_5",
 )
 
 #print(track_details.json) # json contains composition_plan and song_metadata. The composition plan will include lyrics (if applicable)

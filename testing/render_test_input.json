@@ -92,7 +92,7 @@
     "title": "Prompt Mode Track",
     "prompt": "A short, upbeat 8-second bright pop-electro hook at 120 BPM in E major.",
     "music_length_ms": 8000,
-    "model_id": "music_v2",
+    "model_id": "music_v2_5",
     "force_instrumental": true,
     "with_timestamps": false,
     "store_for_inpainting": false,

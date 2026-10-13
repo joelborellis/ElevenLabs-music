@@ -36,8 +36,8 @@ Client → FastAPI Router → Pydantic Validation → Service Layer → External
 ### Three-Stage Music Generation Pipeline
 
 1. **POST /prompt** - Converts the preset choices and chosen finetune (plus optional overrides) into a music prompt via an OpenAI Agent equipped with a web search tool. Resolves `finetune_id` against ElevenLabs to get real genre metadata for the agent
-2. **POST /plan** - Generates composition plan from prompt via ElevenLabs API (`music_v2`)
-3. **POST /render** - Renders audio from composition plan via ElevenLabs `compose_detailed` (`music_v2`); supports WebSocket streaming with progress updates. Pass the same `finetune_id` here that was used for `/prompt`
+2. **POST /plan** - Generates composition plan from prompt via ElevenLabs API (`music_v2_5`)
+3. **POST /render** - Renders audio from composition plan via ElevenLabs `compose_detailed` (`music_v2_5`); supports WebSocket streaming with progress updates. Pass the same `finetune_id` here that was used for `/prompt`
 
 Supporting endpoint: **GET /finetunes** - proxies ElevenLabs' finetune list (cached, key stays server-side) so the client can populate the style picker that produces `sound_profile` + `finetune_id`.
 
@@ -76,7 +76,7 @@ The system prompt forbids naming the finetune (its name, slug, or the words "fin
 ### External Integrations
 
 - **OpenAI Agents SDK** - Prompt generation with system prompt from `prompts/generate_music_prompt.md`; the agent is configured with `WebSearchTool` and returns structured output (prompt, title, description)
-- **ElevenLabs API** - Composition planning (`music.composition_plan.create`) and music rendering (`music.compose_detailed`), both pinned to `model_id="music_v2"`
+- **ElevenLabs API** - Composition planning (`music.composition_plan.create`) and music rendering (`music.compose_detailed`), both pinned to `model_id="music_v2_5"`
 - **OpenTelemetry** - Distributed tracing (enabled by default; configured via env vars)
 
 ## Environment Variables

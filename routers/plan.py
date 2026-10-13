@@ -29,7 +29,7 @@ tracer = trace.get_tracer(__name__)
     description="""
     Generate a composition plan using the ElevenLabs music API based on a text prompt.
     
-    The composition plan (music_v2 format) is a list of chunks, each with its own
+    The composition plan (music_v2_5 format) is a list of chunks, each with its own
     positive/negative styles, duration, optional lyrics/section marker, and context adherence.
     
     ## Input Parameters

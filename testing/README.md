@@ -66,7 +66,7 @@ Tests `POST /plan` — generates a composition plan from a prompt.
 ### [test_render_endpoint.py](test_render_endpoint.py)
 Tests `POST /render` and its file-serving endpoints end to end.
 - **Backend required?** Yes.
-- **Inputs:** Request payloads are read from [render_test_input.json](render_test_input.json) (keys: `plan_mode`, `with_title`, `prompt_mode`) — edit that file to change variations without touching the script. Covers both render modes: a `music_v2` composition plan (chunks) and a text `prompt` with `music_length_ms` plus the extra pass-through params (`model_id`, `force_instrumental`, `output_format`, etc.). If `generated_comp_plan.json` exists (from running `test_plan_endpoint.py` first), the plan-mode render uses that exact plan instead of the static `plan_mode` fallback. Optional CLI flags `--finetune-id <id>` (ids listed in [finetunes.json](finetunes.json)) and `--finetune-strength <0.0-1.0>` (requires `--finetune-id`) add `finetune_id`/`finetune_strength` to all three render payloads; without them the payloads are sent unchanged. (Validation cases use intentionally-invalid values that remain hardcoded.)
+- **Inputs:** Request payloads are read from [render_test_input.json](render_test_input.json) (keys: `plan_mode`, `with_title`, `prompt_mode`) — edit that file to change variations without touching the script. Covers both render modes: a `music_v2_5` composition plan (chunks) and a text `prompt` with `music_length_ms` plus the extra pass-through params (`model_id`, `force_instrumental`, `output_format`, etc.). If `generated_comp_plan.json` exists (from running `test_plan_endpoint.py` first), the plan-mode render uses that exact plan instead of the static `plan_mode` fallback. Optional CLI flag `--finetune-id <id>` (ids listed in [finetunes.json](finetunes.json)) adds `finetune_id` to all three render payloads; without them the payloads are sent unchanged. (Validation cases use intentionally-invalid values that remain hardcoded.)
 - **Outputs:** Prints render responses and pass/fail lines. Downloads the rendered file in memory to verify it is non-empty audio (nothing is written locally). Exercises `GET /render/download/{filename}`, `GET /render/stream/{filename}`, custom-title filenames, 404 handling for missing files, and `422` validation for the prompt/chunks mutual-exclusivity rules (empty request, both provided, and `music_length_ms` without a prompt).
 
 ### [test_render_websocket.py](test_render_websocket.py)
@@ -92,13 +92,13 @@ Calls the `PromptGeneratorService` directly (no HTTP) to debug prompt generation
 - **Outputs:** Prints the generated prompt and its character count. Exits `0` on success, `1` on failure.
 
 ### [test_create_comp_plan.py](test_create_comp_plan.py)
-Calls the ElevenLabs SDK directly: `music.composition_plan.create` (`model_id="music_v2"`).
+Calls the ElevenLabs SDK directly: `music.composition_plan.create` (`model_id="music_v2_5"`).
 - **Backend required?** No — needs `ELEVENLABS_API_KEY`.
 - **Inputs:** Reads the prompt text from [../prompts/user_prompt.txt](../prompts/user_prompt.txt); `music_length_ms` is hardcoded (10000).
 - **Outputs:** Prints the raw composition-plan JSON to stdout. Writes no files.
 
 ### [test_render_music.py](test_render_music.py)
-Calls the ElevenLabs SDK directly: `music.compose_detailed` (`model_id="music_v2"`).
+Calls the ElevenLabs SDK directly: `music.compose_detailed` (`model_id="music_v2_5"`).
 - **Backend required?** No — needs `ELEVENLABS_API_KEY`.
 - **Inputs:** Reads the composition plan from [../prompts/sample_comp_plan.json](../prompts/sample_comp_plan.json); the output title is set via the `TRACK_TITLE` constant in the script.
 - **Outputs:** Prints the track JSON and filename, saves the audio to `testing/music/`, and plays it back through the speakers.
