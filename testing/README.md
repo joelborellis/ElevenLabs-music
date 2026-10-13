@@ -27,7 +27,7 @@ test_prompt_endpoint.py ────────► generated_prompt.json ──
 | --- | --- | --- | --- |
 | 1. `test_prompt_endpoint.py` | `prompt_test_cases.json` (`default`) | `POST /prompt` | `generated_prompt.json` = `{prompt, music_length_ms}` (duration parsed from the prompt text, else 30000) |
 | 2. `test_plan_endpoint.py` | `generated_prompt.json` if present, else `plan_test_input.json` | `POST /plan` | `generated_comp_plan.json` = `{title, chunks}` |
-| 3. `test_render_endpoint.py` | `generated_comp_plan.json` if present, else `render_test_input.json` → `plan_mode` | `POST /render` | the rendered `.mp3` (+ a downloaded copy in `testing/music/`) |
+| 3. `test_render_endpoint.py` | `generated_comp_plan.json` if present, else `render_test_input.json` → `plan_mode` | `POST /render` | the rendered `.mp3` (saved server-side) |
 
 Each generated file is already in the *exact request shape* the next endpoint expects, which is what makes the handoff automatic (e.g. `/plan` returns `chunks` in the same `Chunk` shape that `/render` accepts).
 
@@ -66,8 +66,8 @@ Tests `POST /plan` — generates a composition plan from a prompt.
 ### [test_render_endpoint.py](test_render_endpoint.py)
 Tests `POST /render` and its file-serving endpoints end to end.
 - **Backend required?** Yes.
-- **Inputs:** Request payloads are read from [render_test_input.json](render_test_input.json) (keys: `plan_mode`, `with_title`, `prompt_mode`) — edit that file to change variations without touching the script. Covers both render modes: a `music_v2` composition plan (chunks) and a text `prompt` with `music_length_ms` plus the extra pass-through params (`model_id`, `force_instrumental`, `output_format`, etc.). If `generated_comp_plan.json` exists (from running `test_plan_endpoint.py` first), the plan-mode render uses that exact plan instead of the static `plan_mode` fallback. No CLI arguments. (Validation cases use intentionally-invalid values that remain hardcoded.)
-- **Outputs:** Prints render responses and pass/fail lines. Downloads the rendered file to `testing/music/downloaded_{filename}`. Exercises `GET /render/download/{filename}`, `GET /render/stream/{filename}`, custom-title filenames, 404 handling for missing files, and `422` validation for the prompt/chunks mutual-exclusivity rules (empty request, both provided, and `music_length_ms` without a prompt).
+- **Inputs:** Request payloads are read from [render_test_input.json](render_test_input.json) (keys: `plan_mode`, `with_title`, `prompt_mode`) — edit that file to change variations without touching the script. Covers both render modes: a `music_v2` composition plan (chunks) and a text `prompt` with `music_length_ms` plus the extra pass-through params (`model_id`, `force_instrumental`, `output_format`, etc.). If `generated_comp_plan.json` exists (from running `test_plan_endpoint.py` first), the plan-mode render uses that exact plan instead of the static `plan_mode` fallback. Optional CLI flags `--finetune-id <id>` (ids listed in [finetunes.json](finetunes.json)) and `--finetune-strength <0.0-1.0>` (requires `--finetune-id`) add `finetune_id`/`finetune_strength` to all three render payloads; without them the payloads are sent unchanged. (Validation cases use intentionally-invalid values that remain hardcoded.)
+- **Outputs:** Prints render responses and pass/fail lines. Downloads the rendered file in memory to verify it is non-empty audio (nothing is written locally). Exercises `GET /render/download/{filename}`, `GET /render/stream/{filename}`, custom-title filenames, 404 handling for missing files, and `422` validation for the prompt/chunks mutual-exclusivity rules (empty request, both provided, and `music_length_ms` without a prompt).
 
 ### [test_render_websocket.py](test_render_websocket.py)
 Tests the `ws://localhost:8000/render/ws` WebSocket render endpoint.

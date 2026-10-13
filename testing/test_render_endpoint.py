@@ -13,7 +13,6 @@ Finetune ids can be listed in testing/finetunes.json.
 import argparse
 import requests
 import json
-import os
 from pathlib import Path
 
 BASE_URL = "http://localhost:8000"
@@ -151,24 +150,15 @@ def test_download_endpoint(filename: str):
         content_type = response.headers.get("Content-Type", "")
         print(f"Content-Type: {content_type}")
         
-        # Save to local file for verification
-        output_dir = os.path.join(os.path.dirname(__file__), "music")
-        os.makedirs(output_dir, exist_ok=True)
-        output_path = os.path.join(output_dir, f"downloaded_{filename}")
-        
-        with open(output_path, "wb") as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
-        
-        file_size = os.path.getsize(output_path)
+        # Count the bytes without saving; the server already keeps the file
+        file_size = sum(len(chunk) for chunk in response.iter_content(chunk_size=8192))
         print(f"Downloaded file size: {file_size} bytes")
-        print(f"Saved to: {output_path}")
-        
+
         assert file_size > 0, "Downloaded file is empty"
         assert "audio" in content_type or "mpeg" in content_type, f"Unexpected content type: {content_type}"
-        
+
         print("\n✅ Download test passed!")
-        return output_path
+        return file_size
         
     except requests.exceptions.HTTPError as e:
         print(f"❌ HTTP Error: {e}")
